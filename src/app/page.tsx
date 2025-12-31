@@ -1,0 +1,832 @@
+/* eslint-disable react/no-unescaped-entities */
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+const whatsappLink =
+  "https://wa.me/5554992739597?text=Quero%20importar%20com%20a%20Solid%20Choice";
+
+const highlights = [
+  {
+    title: "Compra assistida premium",
+    description:
+      "Curadoria sob medida direto do mercado interno chinês, com aprovação por fotos reais antes de qualquer pagamento.",
+  },
+  {
+    title: "Escala e rareza",
+    description:
+      "Acesso a milhões de opções: réplicas top tier, custo-benefício e achados exclusivos que não aparecem em catálogos comuns.",
+  },
+  {
+    title: "Suporte humano de ponta a ponta",
+    description:
+      "A Solid busca, você aprova, nós garantimos o envio. Transparência total, sem taxas ocultas.",
+  },
+];
+
+const steps = [
+  {
+    title: "Você escolhe",
+    description:
+      "Conta o que deseja; buscamos, mostramos opções reais (catálogo ou histórico) e você aprova.",
+  },
+  {
+    title: "Chega no armazém",
+    description:
+      "Em 7 a 10 dias o item chega ao nosso armazém na China. Enviamos fotos reais do produto.",
+  },
+  {
+    title: "Você aprova ou troca",
+    description:
+      "Não curtiu? Solicite troca ou reembolso com total liberdade. Só avançamos se você estiver satisfeito.",
+  },
+  {
+    title: "A Solid envia",
+    description:
+      "Com aprovação e dados confirmados, despachamos para o Brasil. Em média, 15 dias depois, o produto está na sua porta.",
+  },
+];
+
+type HeroCard = {
+  name: string;
+  badge?: string | null;
+  price_cents?: number | null;
+  hero_image?: string | null;
+  slug?: string | null;
+  category?: string | null;
+};
+
+const guarantees = [
+  {
+    title: "Produto garantido",
+    description:
+      "Enviamos exatamente como você aprovou, com base nas fotos recebidas do armazém.",
+    icon: "/assets/icon-shield.png",
+  },
+  {
+    title: "Preço final é o que você paga",
+    description:
+      "Sem taxas extras. A Solid cobre eventuais custos de importação para você.",
+    icon: "/assets/icon-money.png",
+  },
+  {
+    title: "Seguro contra extravio",
+    description:
+      "Se o pacote for negado ou extraviado, refazemos a compra. Você não perde dinheiro.",
+    icon: "/assets/icon-truck.png",
+  },
+];
+
+const faqs = [
+  {
+    question: "Como posso rastrear meu pedido?",
+    answer:
+      "Assim que confirmamos a compra, você recebe o código de rastreio por e-mail e WhatsApp. Os status também ficam na área logada em “Meus Pedidos”.",
+  },
+  {
+    question: "Os produtos possuem nota fiscal?",
+    answer:
+      "Sim. Emitimos nota fiscal da compra. Todo item aprovado e enviado sai com documentação para garantir a procedência.",
+  },
+  {
+    question: "Quais formas de pagamento vocês aceitam?",
+    answer:
+      "Pix com 10% OFF, cartão em até 6x sem juros, ou até 12x com juros mínimo. Para drops especiais, confirmamos no WhatsApp.",
+  },
+  {
+    question: "Qual o prazo de entrega?",
+    answer:
+      "Após sua aprovação, o item leva em média 7 a 10 dias para chegar ao armazém na China. Depois de aprovado e despachado, são ~15 dias para chegar no Brasil. Há frete grátis (7-18 dias úteis) e expresso (5-12 dias úteis).",
+  },
+  {
+    question: "Os produtos possuem garantia?",
+    answer:
+      "Garantia de 30 dias contra defeitos de fábrica a partir do recebimento. Se algo não estiver ok, nossa equipe resolve com troca ou reembolso conforme o caso.",
+  },
+  {
+    question: "Qual o prazo para troca ou devolução?",
+    answer:
+      "Você tem 7 dias corridos após o recebimento para solicitar troca ou devolução, conforme o Código de Defesa do Consumidor (CDC).",
+  },
+  {
+    question: "Como falar com a Solid?",
+    answer:
+      "Pelo WhatsApp oficial, pelo e-mail comercial ou pelo suporte integrado no site. Resposta humana e rápida para manter o fluxo transparente.",
+  },
+];
+
+const feedbackImages = [
+  "/assets/feedback1.jpeg",
+  "/assets/feedback2.jpeg",
+  "/assets/feedback3.jpeg",
+  "/assets/feedback4.jpeg",
+  "/assets/feedback5.jpeg",
+  "/assets/feedback6.jpeg",
+  "/assets/feedback7.jpeg",
+  "/assets/feedback8.jpeg",
+  "/assets/feedback9.jpeg",
+  "/assets/feedback10.jpeg",
+  "/assets/feedback11.jpeg",
+];
+
+export default function Home() {
+  const [activeFeedback, setActiveFeedback] = useState(0);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [heroProducts, setHeroProducts] = useState<HeroCard[]>([]);
+  const [heroError, setHeroError] = useState<string | null>(null);
+
+  const heroFallbackImage = "/assets/banner-facil.png";
+
+  useEffect(() => {
+    const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            obs.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setActiveFeedback((prev) => (prev + 1) % feedbackImages.length);
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSessionEmail(data.session?.user?.email ?? null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSessionEmail(session?.user?.email ?? null);
+      }
+    );
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadHero = async () => {
+      try {
+        const res = await fetch("/api/hero", { cache: "no-store" });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Hero fetch falhou: ${res.status} - ${text}`);
+        }
+        const json = (await res.json()) as { items?: HeroCard[] };
+        const items = Array.isArray(json.items) ? json.items : [];
+        if (items.length > 0) {
+          setHeroProducts(items);
+          setHeroError(null);
+        } else {
+          setHeroProducts([]);
+          setHeroError("Nenhum produto retornado.");
+        }
+      } catch (err) {
+        console.error("Erro carregando vitrine hero", err);
+        setHeroProducts([]);
+        setHeroError("Erro ao carregar vitrine hero. Verifique Supabase/ENV.");
+      }
+    };
+    loadHero();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSessionEmail(null);
+  };
+
+  const heroCards = useMemo(() => {
+    return heroProducts.slice(0, 4).map((p) => {
+      const price =
+        typeof p.price_cents === "number" && p.price_cents > 0
+          ? `R$ ${(p.price_cents / 100).toFixed(2).replace(".", ",")}`
+          : "Sob consulta";
+      const hero = p.hero_image || heroFallbackImage;
+      return {
+        name: p.name ?? "Produto",
+        badge: p.badge ?? "Produto",
+        price,
+        hero,
+      };
+    });
+  }, [heroProducts]);
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="grain" />
+
+      {/* Intro Cinemática */}
+      <section className="relative flex min-h-screen items-center justify-center">
+        <div className="absolute inset-0 overflow-hidden">
+          <video
+            className="h-full w-full object-cover"
+            src="/assets/SOLIDBANNER2.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster="/assets/banner-facil.png"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0c1428] via-[#0c1428]/70 to-transparent" />
+        </div>
+        <div
+          className="relative z-10 flex max-w-5xl flex-col items-center px-6 text-center reveal"
+          data-reveal
+          style={{ transitionDelay: "120ms" }}
+        >
+          <span className="badge glass rounded-full px-3 py-2 reveal" data-reveal>
+            Fugazzi culture · Cinematic intro
+          </span>
+          <h1
+            className="mt-6 text-5xl leading-tight tracking-wide text-[#f2d3a8] sm:text-6xl"
+            data-reveal
+            style={{ transitionDelay: "200ms" }}
+          >
+            Qualidade, Exclusividade e Garantia Total
+          </h1>
+          <p
+            className="mt-4 max-w-3xl text-lg text-slate-200"
+            data-reveal
+            style={{ transitionDelay: "260ms" }}
+          >
+            Bem-vindo à Solid Choice. A Solid busca, você aprova, e o produto
+            chega até você. Simples assim.
+          </p>
+          <div
+            className="mt-8 flex flex-wrap items-center justify-center gap-4"
+            data-reveal
+            style={{ transitionDelay: "320ms" }}
+          >
+            <a
+              href="#landing"
+              className="cta flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold uppercase tracking-[0.08em] transition-transform"
+            >
+              Entrar na experiência
+            </a>
+            <Link
+              className="cta-secondary flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] transition-colors"
+              href={whatsappLink}
+              target="_blank"
+            >
+              Falar no WhatsApp
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <main id="landing" className="relative z-10">
+        {/* Navegação */}
+        <nav className="sticky top-0 z-40 border-b border-white/5 bg-[#0c1428]/80 px-6 py-4 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-6xl items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/assets/iconsolid.png"
+                alt="Solid Choice"
+                width={42}
+                height={42}
+                className="rounded-full bg-[#f2d3a8] p-2"
+              />
+              <div>
+                <p className="text-sm uppercase tracking-[0.18em] text-[#f2d3a8]">
+                  Solid Choice
+                </p>
+                <p className="text-xs text-slate-300">
+                  Fugazzi Culture · Since 2017
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {!sessionEmail ? (
+                <Link
+                  className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
+                  href="/login"
+                >
+                  Login
+                </Link>
+              ) : (
+                <div className="hidden items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-200 sm:flex">
+                  Logado
+                  <span className="text-[#f2d3a8]">
+                    {sessionEmail.split("@")[0]}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="rounded-full border border-white/20 px-3 py-1 text-[11px] uppercase tracking-[0.08em] text-slate-200 transition hover:bg-white/10"
+                  >
+                    Sair
+                  </button>
+                </div>
+              )}
+              <Link
+                className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
+                href="/loja"
+              >
+                Loja
+              </Link>
+              <a
+                className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
+                href="#processo"
+              >
+                Ver etapas
+              </a>
+              <Link
+                href={whatsappLink}
+                target="_blank"
+                className="cta flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+              >
+                Falar com a Solid
+              </Link>
+            </div>
+          </div>
+        </nav>
+
+        {/* Hero principal */}
+        <section
+          className="section-shell relative mx-auto mt-12 max-w-6xl overflow-hidden rounded-3xl px-8 py-10 sm:px-12 sm:py-14 reveal"
+          data-reveal
+        >
+          <div className="absolute inset-0 opacity-50">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#2d3a5a]/30 via-transparent to-[#0c1428]" />
+          </div>
+          <div className="relative grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-5">
+              <p className="badge inline-flex rounded-full px-3 py-2" data-reveal>
+                Landing · Vitrine de conversão
+              </p>
+              <h2
+                className="text-4xl leading-tight text-[#f2d3a8] sm:text-5xl"
+                data-reveal
+              >
+                Qualidade, Exclusividade e Garantia Total
+              </h2>
+              <p className="text-lg text-slate-200" data-reveal>
+                A Solid busca, você aprova, e o produto chega até você. Cada
+                passo é personalizado para entregar luxo, precisão e zero dor de
+                cabeça.
+              </p>
+              <div className="flex flex-wrap gap-3" data-reveal>
+                <Link
+                  href={whatsappLink}
+                  target="_blank"
+                  className="cta flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
+                >
+                  Falar com especialista
+                </Link>
+                <Link
+                  href="/loja"
+                  className="cta-secondary flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
+                >
+                  Ver catálogo aberto
+                </Link>
+              </div>
+              <div className="divider my-6" />
+              <div className="grid gap-4 sm:grid-cols-3">
+                {highlights.map((item, index) => (
+                  <div
+                    key={item.title}
+                    className="glass rounded-2xl p-4 text-left reveal"
+                    data-reveal
+                    style={{ transitionDelay: `${140 + index * 80}ms` }}
+                  >
+                    <p className="text-sm uppercase tracking-[0.14em] text-[#f2d3a8]">
+                      {item.title}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-200">
+                      {item.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div
+              className="relative reveal"
+              data-reveal
+              style={{ transitionDelay: "180ms" }}
+            >
+              <div className="absolute -left-12 -top-10 h-32 w-32 rounded-full bg-[#f2d3a8]/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#101a30] shadow-2xl">
+                <Image
+                  src="/assets/banner-whats.png"
+                  alt="Solid Choice Preview"
+                  width={760}
+                  height={760}
+                  className="h-full w-full object-cover"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0c1428]/70 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-4 flex items-center gap-3 rounded-full bg-black/40 px-4 py-2 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
+                  Cinematic landing · Deep blue + cream
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* O Diferencial */}
+        <section
+          id="diferencial"
+          className="mx-auto mt-14 max-w-6xl space-y-8 px-6 reveal"
+          data-reveal
+        >
+          <div className="flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="badge inline-flex rounded-full px-3 py-2">
+                Seção 01 · O Diferencial
+              </p>
+              <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
+                O que é o Redirecionamento Solid
+              </h3>
+              <p className="mt-3 max-w-3xl text-lg text-slate-200">
+                Compra assistida direto da China, do seu jeito. Cada cliente é
+                único: da réplica top tier ao custo-benefício perfeito, ou
+                aquele item que parecia impossível de encontrar.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {highlights.map((item, index) => (
+              <div
+                key={item.title}
+                className="section-shell rounded-2xl p-5 shadow-xl reveal"
+                data-reveal
+                style={{ transitionDelay: `${120 + index * 90}ms` }}
+              >
+                <p className="text-sm uppercase tracking-[0.14em] text-[#f2d3a8]">
+                  {item.title}
+                </p>
+                <p className="mt-2 text-sm text-slate-200">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Processo */}
+        <section
+          id="processo"
+          className="mx-auto mt-16 max-w-6xl space-y-10 px-6 reveal"
+          data-reveal
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="badge inline-flex rounded-full px-3 py-2">
+                Seção 02 · Como funciona
+              </p>
+              <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
+                Do pedido ao seu endereço, em 4 passos simples
+              </h3>
+            </div>
+            <Link
+              href={whatsappLink}
+              target="_blank"
+              className="cta hidden rounded-full px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] sm:inline-flex"
+            >
+              Preciso de ajuda
+            </Link>
+          </div>
+          <div className="relative">
+            <div className="absolute left-8 top-0 hidden h-full w-px bg-gradient-to-b from-[#f2d3a8]/40 via-[#f2d3a8]/10 to-transparent sm:block" />
+            <div className="grid gap-6 sm:grid-cols-2">
+              {steps.map((step, index) => (
+                <div
+                  key={step.title}
+                  className="glass relative flex gap-4 rounded-2xl p-5 reveal"
+                  data-reveal
+                  style={{ transitionDelay: `${140 + index * 80}ms` }}
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f2d3a8]/15 text-lg font-semibold text-[#f2d3a8] ring-1 ring-[#f2d3a8]/40">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.14em] text-[#f2d3a8]">
+                      {step.title}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-200">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Vitrine Hero */}
+        <section
+          id="vitrine"
+          className="mx-auto mt-16 max-w-6xl space-y-8 px-6 reveal"
+          data-reveal
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="badge inline-flex rounded-full px-3 py-2">
+                Seção 04 · Mais vendidos
+              </p>
+              <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
+                Vitrine Hero · produtos mais desejados
+              </h3>
+              <p className="mt-2 text-slate-200">
+                Um teaser curado das peças que convertem. O catálogo completo
+                segue logo abaixo.
+              </p>
+            </div>
+            <Link
+              href="/loja"
+              className="cta rounded-full px-5 py-3 text-sm font-semibold uppercase tracking-[0.1em]"
+            >
+              Acessar catálogo completo
+            </Link>
+          </div>
+
+          {heroCards.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-sm text-slate-300">
+              {heroError
+                ? heroError
+                : "Nenhum produto para exibir aqui ainda. Confira o catálogo completo."}
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {heroCards.map((item, index) => (
+                <Link
+                  key={`${item.name}-${index}`}
+                  href="/loja"
+                  className="section-shell group relative overflow-hidden rounded-2xl p-4 transition-transform duration-300 hover:-translate-y-1 reveal visible block"
+                  style={{ transitionDelay: `${120 + index * 80}ms` }}
+                >
+                  <div className="relative h-56 w-full overflow-hidden rounded-xl bg-[#0c1428]">
+                    <Image
+                      src={item.hero}
+                      alt={item.name}
+                      fill
+                      sizes="(min-width: 1280px) 320px, (min-width: 768px) 50vw, 100vw"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="badge rounded-full px-3 py-1 text-[11px]">
+                      {item.badge}
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                      {item.price}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-lg text-[#f2d3a8]">{item.name}</p>
+                  <span className="mt-3 inline-block text-sm font-semibold uppercase tracking-[0.1em] text-[#f2d3a8] underline-offset-4 group-hover:underline">
+                    Adicionar à cotação
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Segurança */}
+        <section
+          id="seguranca"
+          className="mx-auto mt-16 max-w-6xl space-y-8 px-6 reveal"
+          data-reveal
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="badge inline-flex rounded-full px-3 py-2">
+                Seção 06 · Segurança total
+              </p>
+              <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
+                Garantias e segurança total · a Solid assume tudo
+              </h3>
+              <p className="mt-2 max-w-3xl text-slate-200">
+                Selos de confiança, processos claros e cobertura completa para
+                você importar sem risco.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {guarantees.map((item, index) => (
+              <div
+                key={item.title}
+                className="section-shell flex flex-col gap-4 rounded-2xl p-5 reveal"
+                data-reveal
+                style={{ transitionDelay: `${120 + index * 80}ms` }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f2d3a8]/15">
+                    <Image src={item.icon} alt={item.title} width={28} height={28} />
+                  </div>
+                  <p className="text-sm uppercase tracking-[0.14em] text-[#f2d3a8]">
+                    {item.title}
+                  </p>
+                </div>
+                <p className="text-sm text-slate-200">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Feedbacks */}
+        <section
+          id="feedbacks"
+          className="mx-auto mt-16 max-w-6xl px-6 reveal"
+          data-reveal
+        >
+          <div className="section-shell overflow-hidden rounded-3xl px-6 py-8 sm:px-10 sm:py-12">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="badge inline-flex rounded-full px-3 py-2">
+                  Feedbacks reais · Prova social
+                </p>
+                <h3 className="mt-3 text-3xl sm:text-4xl text-[#f2d3a8]">
+                  Clientes que já importaram com a Solid
+                </h3>
+                <p className="mt-2 max-w-3xl text-slate-200">
+                  Capturas de atendimento e entregas confirmam a experiência
+                  segura, humana e transparente.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveFeedback(
+                      (prev) => (prev - 1 + feedbackImages.length) % feedbackImages.length
+                    )
+                  }
+                  className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveFeedback((prev) => (prev + 1) % feedbackImages.length)}
+                  className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+                {[0, 1, 2].map((offset) => {
+                  const index = (activeFeedback + offset) % feedbackImages.length;
+                  const src = feedbackImages[index];
+                  return (
+                    <div
+                      key={src}
+                      className="glass relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10"
+                    >
+                      <div className="relative aspect-[4/5] w-full overflow-hidden">
+                        <Image
+                          src={src}
+                          alt={`Feedback ${index + 1}`}
+                          fill
+                          sizes="(min-width: 1024px) 33vw, 100vw"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between px-4 py-3 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
+                        <span>Feedback {index + 1}</span>
+                        <span className="text-[10px] text-slate-300">Prova social</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                {feedbackImages.map((_, index) => {
+                  const isActive = index === activeFeedback;
+                  return (
+                    <button
+                      key={`dot-${index}`}
+                      type="button"
+                      onClick={() => setActiveFeedback(index)}
+                      className={`h-2 w-2 rounded-full transition ${
+                        isActive ? "bg-[#f2d3a8]" : "bg-white/20 hover:bg-white/40"
+                      }`}
+                      aria-label={`Ir para feedback ${index + 1}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section
+          id="faq"
+          className="mx-auto mt-16 max-w-6xl space-y-6 px-6 reveal"
+          data-reveal
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="badge inline-flex rounded-full px-3 py-2">
+                Perguntas Frequentes · Solid Choice
+              </p>
+              <h3 className="mt-3 text-3xl text-[#f2d3a8] sm:text-4xl">
+                Tudo o que você precisa saber
+              </h3>
+              <p className="mt-2 max-w-3xl text-slate-200">
+                Transparência total: prazos, garantias, pagamentos e suporte.
+              </p>
+            </div>
+            <Link
+              href={whatsappLink}
+              target="_blank"
+              className="cta rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+            >
+              Falar com a Solid
+            </Link>
+          </div>
+
+          <div className="section-shell rounded-3xl border border-white/10">
+            {faqs.map((item, index) => (
+              <details
+                key={item.question}
+                className={`group border-b border-white/5 px-5 py-4 last:border-b-0 ${
+                  index === 0 ? "rounded-t-3xl" : ""
+                } ${index === faqs.length - 1 ? "rounded-b-3xl" : ""}`}
+              >
+                <summary className="flex cursor-pointer items-center justify-between gap-4 text-left text-[#f2d3a8]">
+                  <span className="text-base font-semibold">{item.question}</span>
+                  <span className="text-sm text-slate-300 transition group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-slate-200 leading-relaxed">
+                  {item.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* Rodapé / CTA final */}
+        <section className="mx-auto mt-16 max-w-6xl px-6 pb-16 reveal" data-reveal>
+          <div className="section-shell overflow-hidden rounded-3xl px-8 py-10 sm:px-12 sm:py-14">
+            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="reveal" data-reveal style={{ transitionDelay: "100ms" }}>
+                <p className="badge inline-flex rounded-full px-3 py-2" data-reveal>
+                  Seção 07 · CTA final
+                </p>
+                <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl" data-reveal>
+                  Quer importar com segurança, transparência e suporte real?
+                </h3>
+                <p className="mt-2 max-w-3xl text-lg text-slate-200" data-reveal>
+                  A Solid Choice combina estética cinematográfica com operação
+                  high-end: UX/UI refinado, dados no Supabase e performance
+                  otimizada.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3" data-reveal>
+                  <Link
+                    href={whatsappLink}
+                    target="_blank"
+                    className="cta rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
+                  >
+                    Falar com a Solid via WhatsApp
+                  </Link>
+                  <Link
+                    href="/loja"
+                    className="cta-secondary rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
+                  >
+                    Ver catálogo
+                  </Link>
+                </div>
+              </div>
+              <div
+                className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0f182e] reveal"
+                data-reveal
+                style={{ transitionDelay: "160ms" }}
+              >
+                <Image
+                  src="/assets/banner-whats.png"
+                  alt="Contato Solid Choice"
+                  width={960}
+                  height={720}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0c1428]/85 via-transparent to-transparent" />
+                <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
+                  Atendimento humano · Resposta rápida
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

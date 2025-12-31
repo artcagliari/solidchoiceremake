@@ -1,0 +1,68 @@
+Relatório do Projeto Solid Choice - Estado Atual
+================================================
+
+Resumo geral
+------------
+- Landing cinematográfica pronta (Semana 1).
+- Loja/Catálogo visual pronta com dados mock (Semana 2).
+- Navegação entre landing, loja e detalhes de produto configurada.
+- Tema aplicado: Deep Blue (#0c1428 / #2d3a5a) + Cream (#f2d3a8), tipografia Bebas Neue (headings) + Manrope (body).
+- Assets carregados em public/assets (vídeo SOLIDBANNER2.mp4, ícones, banners e feedbacks).
+- Lint OK; projeto roda com `npm run dev` em http://localhost:3000.
+
+Arquivos principais
+-------------------
+- src/app/page.tsx: Landing completa com seções Hero (vídeo), Diferencial, Processo (4 passos), Vitrine “Mais Vendidos”, Catálogo aberto, Segurança, Feedbacks (carrossel 3-up com navegação 1 a 1), FAQ e CTA final.
+- src/app/loja/page.tsx: Página de listagem com filtros (categoria, marca, tamanho, busca), grid de produtos mock e CTAs para detalhes, WhatsApp e voltar à landing.
+- src/app/loja/[slug]/page.tsx: Página de produto com galeria, tamanhos, cores, features, CTA “Adicionar à cotação” (WhatsApp), voltar ao catálogo e à landing.
+- src/data/products.ts: Produtos mockados (6 itens) com campos slug, brand, category, priceLabel, badge, sizes, colors, description, features, heroImage e images.
+- src/app/layout.tsx: Metadados e fontes Bebas Neue/Manrope, fundo e cor de texto da brand.
+- src/app/globals.css: Paleta, efeitos (glass, grain), badges, CTAs, animações reveal e estilos globais.
+
+Fluxo visual (Landing)
+----------------------
+1) Intro: vídeo SOLIDBANNER2.mp4 full-screen, overlay, CTA “Entrar na experiência” e WhatsApp.
+2) Navegação sticky (logo + CTA WhatsApp; link “Ver etapas”).
+3) Hero: título, copy, CTAs (especialista/ catálago) e cards de diferencial.
+4) Seção 1 (Diferencial): cards com compra assistida premium, escala/rareza, suporte humano.
+5) Seção 2 (Processo): linha do tempo 4 passos.
+6) Seção 4 (Mais Vendidos): grid dos produtos hero.
+7) Seção 5 (Catálogo aberto): texto de catálogo infinito + imagem.
+8) Seção 6 (Segurança): selos e garantias (produto garantido, preço final, seguro contra extravio).
+9) Feedbacks: carrossel 3 por vez, navegação 1 a 1 (anterior/próximo), dots.
+10) FAQ: acordeão com perguntas-chave (rastreio, NF, pagamentos, prazos, garantia, trocas, contato).
+11) CTA final: reforço de segurança, Supabase/Vercel, JWT/RLS, botão WhatsApp.
+
+Fluxo visual (Loja)
+-------------------
+- Hero da loja: badge “Semana 02 · Catálogo visual”, CTA WhatsApp, link para produtos e botão “Voltar para a landing”.
+- Filtros: categoria, marca, tamanho e busca por nome/marca.
+- Grid: cards com badge, priceLabel, imagem hero e CTAs “Ver detalhes” e “Cotar” (WhatsApp com mensagem pré-preenchida).
+- Detalhe do produto: galeria (hero + thumbnails), tamanhos, cores, features, CTA “Adicionar à cotação”, “Voltar para o catálogo” e “Voltar para a landing”.
+
+Assets
+------
+- public/assets/: SOLIDBANNER2.mp4, banner-facil.png, banner-whats.png, Prancheta 1/2/9.png, ícones (money/shield/truck/iconsolid), feedback1-11.jpeg.
+
+Como rodar
+----------
+- Instalar dependências: `npm install`
+- Rodar: `npm run dev`
+- Acessar: http://localhost:3000
+
+Próximos passos sugeridos (Semana 3 em diante)
+----------------------------------------------
+1) Supabase Pro: criar projeto, ativar backups, obter URL, anon key, service role key.
+2) Variáveis em `.env.local`: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+3) Esquema sugerido: products, product_variants, carts, cart_items, orders, users (auth), admin_users.
+   - Status pedidos: aguardando_pagamento, pago, no_armazem_china, enviado_brasil, entregue.
+   - RLS: leitura pública em products/variants; demais restrito a auth.uid (dono) e admin/service.
+4) Migrar catálogo mock para DB; conectar loja a Supabase.
+5) Checkout híbrido: ação/rota server grava pedido e retorna link WhatsApp (#pedido).
+6) Admin: role admin em admin_users, painel para produtos/pedidos.
+7) Semana 5: auth/login, área “Meus Pedidos” e realtime de status.
+
+Observação
+----------
+O design atual está igual ao visual “perfeito” restabelecido: paleta Deep Blue + Cream, glass, grain, fontes Bebas Neue/Manrope, animações reveal, CTAs e carrossel de feedbacks. Não alterar globals/layout sem necessidade.
+
