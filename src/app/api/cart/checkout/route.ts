@@ -129,8 +129,11 @@ export async function POST(req: Request) {
     if (clearErr) throw new Error(clearErr.message);
 
     // monta mensagem do whatsapp
+    const customerEmail = auth.user.email ?? "sem e-mail";
     const lines = [
       "Olá! Quero finalizar minha cotação com a Solid Choice.",
+      "",
+      `Cliente (e-mail): ${customerEmail}`,
       "",
       `Pedido: ${order_id}`,
       "",

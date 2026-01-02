@@ -81,6 +81,7 @@ export default function AdminPage() {
   const [orderFilter, setOrderFilter] = useState<
     "pending" | "confirmed" | "canceled" | "all"
   >("pending");
+  const [orderSearch, setOrderSearch] = useState("");
 
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -126,11 +127,20 @@ export default function AdminPage() {
   }, [orders]);
 
   const filteredOrders = useMemo(() => {
-    if (orderFilter === "all") return orders;
-    return orders.filter(
-      (o) => (o.status ?? "").toLowerCase() === orderFilter
-    );
-  }, [orders, orderFilter]);
+    const base =
+      orderFilter === "all"
+        ? orders
+        : orders.filter((o) => (o.status ?? "").toLowerCase() === orderFilter);
+
+    const q = orderSearch.trim().toLowerCase();
+    if (!q) return base;
+
+    return base.filter((o) => {
+      const id = (o.id ?? "").toLowerCase();
+      const email = (o.email ?? "").toLowerCase();
+      return id.includes(q) || email.includes(q);
+    });
+  }, [orders, orderFilter, orderSearch]);
 
   const statusLabel = (status: string | null) => {
     const s = (status ?? "pending").toLowerCase();
@@ -694,6 +704,15 @@ export default function AdminPage() {
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="mt-4">
+                <input
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-[#f2d3a8]/40"
+                  placeholder="Buscar por código do pedido (ou e-mail)..."
+                />
               </div>
 
               <div className="mt-4 space-y-3">
