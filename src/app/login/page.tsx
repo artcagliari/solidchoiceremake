@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
 
   const title = useMemo(
     () => (mode === "login" ? "Entrar" : "Criar conta"),
@@ -31,6 +32,7 @@ export default function LoginPage() {
     setError(null);
     setInfo(null);
     setNeedsEmailConfirm(false);
+    setResetMode(false);
     setLoading(true);
     try {
       if (mode === "login") {
@@ -59,6 +61,31 @@ export default function LoginPage() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Erro inesperado ao autenticar.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPasswordReset = async () => {
+    setError(null);
+    setInfo(null);
+    setNeedsEmailConfirm(false);
+    setResetMode(true);
+    setLoading(true);
+    try {
+      if (!email) throw new Error("Digite seu e-mail para receber o link.");
+      const redirectTo = `${window.location.origin}/reset-senha`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      if (error) throw error;
+      setInfo(
+        "Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada e spam."
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Não foi possível enviar o e-mail.";
       setError(message);
     } finally {
       setLoading(false);
@@ -140,6 +167,27 @@ export default function LoginPage() {
               />
             </label>
 
+            {mode === "login" ? (
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={sendPasswordReset}
+                  disabled={loading}
+                  className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                >
+                  Esqueci minha senha
+                </button>
+                {resetMode ? (
+                  <Link
+                    href="/reset-senha"
+                    className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                  >
+                    Abrir tela de reset
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
+
             {error ? (
               <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-slate-200">
                 {error}
@@ -182,6 +230,26 @@ export default function LoginPage() {
                     >
                       Ir para login
                     </button>
+                  </div>
+                ) : null}
+                {resetMode ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      href="https://mail.google.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                    >
+                      Abrir Gmail
+                    </a>
+                    <a
+                      href="https://outlook.live.com/mail/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                    >
+                      Abrir Outlook
+                    </a>
                   </div>
                 ) : null}
               </div>
