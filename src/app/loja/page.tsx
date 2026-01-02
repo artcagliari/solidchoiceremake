@@ -83,6 +83,12 @@ export default async function LojaPage({
             >
               Ver carrinho
             </Link>
+            <Link
+              href="/minha-conta"
+              className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+            >
+              Minhas compras
+            </Link>
             <a
               href="#produtos"
               className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"

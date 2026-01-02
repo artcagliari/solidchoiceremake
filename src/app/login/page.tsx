@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
 
   const title = useMemo(
     () => (mode === "login" ? "Entrar" : "Criar conta"),
@@ -27,6 +29,8 @@ export default function LoginPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setInfo(null);
+    setNeedsEmailConfirm(false);
     setLoading(true);
     try {
       if (mode === "login") {
@@ -47,13 +51,35 @@ export default function LoginPage() {
       if (data.session) {
         router.push("/loja");
       } else {
-        setError(
-          "Conta criada! Se o Supabase estiver com confirmação de e-mail ligada, confirme seu e-mail e depois faça login."
+        setNeedsEmailConfirm(true);
+        setInfo(
+          "Conta criada! Agora confirme seu e-mail para ativar a conta. Depois, volte e faça login."
         );
       }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Erro inesperado ao autenticar.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    setError(null);
+    setInfo(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+      if (error) throw error;
+      setNeedsEmailConfirm(true);
+      setInfo("Reenviamos o e-mail de confirmação. Verifique sua caixa de entrada e spam.");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Não foi possível reenviar o e-mail.";
       setError(message);
     } finally {
       setLoading(false);
@@ -117,6 +143,47 @@ export default function LoginPage() {
             {error ? (
               <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-slate-200">
                 {error}
+              </div>
+            ) : null}
+
+            {info ? (
+              <div className="rounded-xl border border-[#f2d3a8]/25 bg-[#f2d3a8]/10 px-4 py-3 text-sm text-slate-200">
+                {info}
+                {needsEmailConfirm ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      href="https://mail.google.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                    >
+                      Abrir Gmail
+                    </a>
+                    <a
+                      href="https://outlook.live.com/mail/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                    >
+                      Abrir Outlook
+                    </a>
+                    <button
+                      type="button"
+                      onClick={resendConfirmation}
+                      disabled={loading || !email}
+                      className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                    >
+                      Reenviar confirmação
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("login")}
+                      className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                    >
+                      Ir para login
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
