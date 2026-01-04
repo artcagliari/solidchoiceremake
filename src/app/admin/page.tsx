@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { defaultLandingContent, type LandingContent } from "@/lib/landingContent";
+import {
+  defaultLandingContent,
+  normalizeLandingContentForSave,
+  type LandingContent,
+} from "@/lib/landingContent";
 
 type Product = {
   id: string;
@@ -229,16 +233,18 @@ export default function AdminPage() {
     setLandingLoading(true);
     setLandingMsg(null);
     try {
+      const normalized = normalizeLandingContentForSave(landingContent);
       const res = await fetch("/api/admin/landing", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${t}`,
         },
-        body: JSON.stringify({ content: landingContent }),
+        body: JSON.stringify({ content: normalized }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setLandingAdvancedJson(JSON.stringify(landingContent, null, 2));
+      setLandingContent(normalized);
+      setLandingAdvancedJson(JSON.stringify(normalized, null, 2));
       setLandingMsg("Conteúdo salvo no Supabase.");
     } catch (err) {
       const msg =
@@ -986,7 +992,7 @@ export default function AdminPage() {
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Badge</span>
                     <input
-                      value={landingContent.intro.badge}
+                      value={landingContent.intro.badge ?? ""}
                       onChange={(e) =>
                         setLandingContent((prev) => ({
                           ...prev,
@@ -999,7 +1005,7 @@ export default function AdminPage() {
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Título</span>
                     <input
-                      value={landingContent.intro.title}
+                      value={landingContent.intro.title ?? ""}
                       onChange={(e) =>
                         setLandingContent((prev) => ({
                           ...prev,
@@ -1012,7 +1018,7 @@ export default function AdminPage() {
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Subtítulo</span>
                     <textarea
-                      value={landingContent.intro.subtitle}
+                      value={landingContent.intro.subtitle ?? ""}
                       onChange={(e) =>
                         setLandingContent((prev) => ({
                           ...prev,
@@ -1026,7 +1032,7 @@ export default function AdminPage() {
                     <label className="block">
                       <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Botão 1</span>
                       <input
-                        value={landingContent.intro.ctaEnter}
+                        value={landingContent.intro.ctaEnter ?? ""}
                         onChange={(e) =>
                           setLandingContent((prev) => ({
                             ...prev,
@@ -1039,7 +1045,7 @@ export default function AdminPage() {
                     <label className="block">
                       <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Botão 2</span>
                       <input
-                        value={landingContent.intro.ctaWhatsapp}
+                        value={landingContent.intro.ctaWhatsapp ?? ""}
                         onChange={(e) =>
                           setLandingContent((prev) => ({
                             ...prev,
@@ -1061,7 +1067,7 @@ export default function AdminPage() {
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Link do WhatsApp</span>
                     <input
-                      value={landingContent.whatsappLink}
+                      value={landingContent.whatsappLink ?? ""}
                       onChange={(e) =>
                         setLandingContent((prev) => ({ ...prev, whatsappLink: e.target.value }))
                       }
@@ -1079,7 +1085,7 @@ export default function AdminPage() {
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Badge</span>
                     <input
-                      value={landingContent.hero.badge}
+                      value={landingContent.hero.badge ?? ""}
                       onChange={(e) =>
                         setLandingContent((prev) => ({
                           ...prev,
@@ -1092,7 +1098,7 @@ export default function AdminPage() {
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Título</span>
                     <input
-                      value={landingContent.hero.title}
+                      value={landingContent.hero.title ?? ""}
                       onChange={(e) =>
                         setLandingContent((prev) => ({
                           ...prev,
@@ -1105,7 +1111,7 @@ export default function AdminPage() {
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Subtítulo</span>
                     <textarea
-                      value={landingContent.hero.subtitle}
+                      value={landingContent.hero.subtitle ?? ""}
                       onChange={(e) =>
                         setLandingContent((prev) => ({
                           ...prev,
@@ -1119,7 +1125,7 @@ export default function AdminPage() {
                     <label className="block">
                       <span className="text-xs uppercase tracking-[0.12em] text-slate-300">CTA WhatsApp</span>
                       <input
-                        value={landingContent.hero.ctaSpecialist}
+                        value={landingContent.hero.ctaSpecialist ?? ""}
                         onChange={(e) =>
                           setLandingContent((prev) => ({
                             ...prev,
@@ -1132,7 +1138,7 @@ export default function AdminPage() {
                     <label className="block">
                       <span className="text-xs uppercase tracking-[0.12em] text-slate-300">CTA Catálogo</span>
                       <input
-                        value={landingContent.hero.ctaCatalog}
+                        value={landingContent.hero.ctaCatalog ?? ""}
                         onChange={(e) =>
                           setLandingContent((prev) => ({
                             ...prev,
@@ -1172,7 +1178,7 @@ export default function AdminPage() {
                       </div>
                       <div className="mt-3 grid gap-3">
                         <input
-                          value={h.title}
+                          value={h.title ?? ""}
                           onChange={(e) =>
                             setLandingContent((prev) => ({
                               ...prev,
@@ -1185,7 +1191,7 @@ export default function AdminPage() {
                           placeholder="Título"
                         />
                         <textarea
-                          value={h.description}
+                          value={h.description ?? ""}
                           onChange={(e) =>
                             setLandingContent((prev) => ({
                               ...prev,
@@ -1207,7 +1213,7 @@ export default function AdminPage() {
                         ...prev,
                         highlights: [
                           ...prev.highlights,
-                          { title: "Novo título", description: "Nova descrição" },
+                          { title: null, description: null },
                         ],
                       }))
                     }
@@ -1244,7 +1250,7 @@ export default function AdminPage() {
                       </div>
                       <div className="mt-3 grid gap-3">
                         <input
-                          value={f.question}
+                          value={f.question ?? ""}
                           onChange={(e) =>
                             setLandingContent((prev) => ({
                               ...prev,
@@ -1257,7 +1263,7 @@ export default function AdminPage() {
                           placeholder="Pergunta"
                         />
                         <textarea
-                          value={f.answer}
+                          value={f.answer ?? ""}
                           onChange={(e) =>
                             setLandingContent((prev) => ({
                               ...prev,
@@ -1279,7 +1285,7 @@ export default function AdminPage() {
                         ...prev,
                         faqs: [
                           ...prev.faqs,
-                          { question: "Nova pergunta?", answer: "Nova resposta." },
+                          { question: null, answer: null },
                         ],
                       }))
                     }
@@ -1350,17 +1356,17 @@ export default function AdminPage() {
                   Prévia (rápida)
                 </p>
                 <h3 className="mt-2 text-3xl text-[#f2d3a8]">
-                  {landingContent.intro.title}
+                  {landingContent.intro.title ?? ""}
                 </h3>
                 <p className="mt-2 text-sm text-slate-200">
-                  {landingContent.intro.subtitle}
+                  {landingContent.intro.subtitle ?? ""}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="badge rounded-full px-3 py-1 text-[11px]">
-                    {landingContent.intro.ctaEnter}
+                    {landingContent.intro.ctaEnter ?? ""}
                   </span>
                   <span className="badge rounded-full px-3 py-1 text-[11px]">
-                    {landingContent.intro.ctaWhatsapp}
+                    {landingContent.intro.ctaWhatsapp ?? ""}
                   </span>
                 </div>
               </div>
@@ -1370,14 +1376,14 @@ export default function AdminPage() {
                   Hero
                 </p>
                 <p className="mt-2 text-sm text-slate-200">{landingContent.hero.badge}</p>
-                <h3 className="mt-2 text-2xl text-[#f2d3a8]">{landingContent.hero.title}</h3>
-                <p className="mt-2 text-sm text-slate-200">{landingContent.hero.subtitle}</p>
+                <h3 className="mt-2 text-2xl text-[#f2d3a8]">{landingContent.hero.title ?? ""}</h3>
+                <p className="mt-2 text-sm text-slate-200">{landingContent.hero.subtitle ?? ""}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="badge rounded-full px-3 py-1 text-[11px]">
-                    {landingContent.hero.ctaSpecialist}
+                    {landingContent.hero.ctaSpecialist ?? ""}
                   </span>
                   <span className="badge rounded-full px-3 py-1 text-[11px]">
-                    {landingContent.hero.ctaCatalog}
+                    {landingContent.hero.ctaCatalog ?? ""}
                   </span>
                 </div>
               </div>
@@ -1389,8 +1395,8 @@ export default function AdminPage() {
                 <div className="mt-3 space-y-2">
                   {landingContent.highlights.slice(0, 3).map((h, idx) => (
                     <div key={`${h.title}-${idx}`} className="rounded-2xl border border-white/10 bg-black/10 p-3">
-                      <p className="text-sm font-semibold text-slate-100">{h.title}</p>
-                      <p className="mt-1 text-xs text-slate-300">{h.description}</p>
+                      <p className="text-sm font-semibold text-slate-100">{h.title ?? ""}</p>
+                      <p className="mt-1 text-xs text-slate-300">{h.description ?? ""}</p>
                     </div>
                   ))}
                 </div>

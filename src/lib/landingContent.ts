@@ -1,106 +1,106 @@
 export type LandingHighlight = {
-  title: string;
-  description: string;
+  title: string | null;
+  description: string | null;
 };
 
 export type LandingStep = {
-  title: string;
-  description: string;
+  title: string | null;
+  description: string | null;
 };
 
 export type LandingGuarantee = {
-  title: string;
-  description: string;
-  icon: string; // path em /public/assets
+  title: string | null;
+  description: string | null;
+  icon: string | null; // path em /public/assets
 };
 
 export type LandingFaq = {
-  question: string;
-  answer: string;
+  question: string | null;
+  answer: string | null;
 };
 
 export type LandingContent = {
-  whatsappLink: string;
+  whatsappLink: string | null;
 
   intro: {
-    badge: string;
-    title: string;
-    subtitle: string;
-    ctaEnter: string;
-    ctaWhatsapp: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
+    ctaEnter: string | null;
+    ctaWhatsapp: string | null;
   };
 
   nav: {
-    brandTitle: string;
-    brandSubtitle: string;
-    loginLabel: string;
-    loggedInLabel: string;
-    logoutLabel: string;
-    lojaLabel: string;
-    etapasLabel: string;
-    whatsappLabel: string;
+    brandTitle: string | null;
+    brandSubtitle: string | null;
+    loginLabel: string | null;
+    loggedInLabel: string | null;
+    logoutLabel: string | null;
+    lojaLabel: string | null;
+    etapasLabel: string | null;
+    whatsappLabel: string | null;
   };
 
   hero: {
-    badge: string;
-    title: string;
-    subtitle: string;
-    ctaSpecialist: string;
-    ctaCatalog: string;
-    imageAlt: string;
-    imageCaption: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
+    ctaSpecialist: string | null;
+    ctaCatalog: string | null;
+    imageAlt: string | null;
+    imageCaption: string | null;
   };
 
   diferencial: {
-    badge: string;
-    title: string;
-    subtitle: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
   };
 
   processo: {
-    badge: string;
-    title: string;
-    helpCta: string;
+    badge: string | null;
+    title: string | null;
+    helpCta: string | null;
   };
 
   vitrine: {
-    badge: string;
-    title: string;
-    subtitle: string;
-    ctaCatalog: string;
-    emptyFallback: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
+    ctaCatalog: string | null;
+    emptyFallback: string | null;
   };
 
   seguranca: {
-    badge: string;
-    title: string;
-    subtitle: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
   };
 
   feedbacks: {
-    badge: string;
-    title: string;
-    subtitle: string;
-    prev: string;
-    next: string;
-    proofLabel: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
+    prev: string | null;
+    next: string | null;
+    proofLabel: string | null;
   };
 
   faq: {
-    badge: string;
-    title: string;
-    subtitle: string;
-    ctaWhatsapp: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
+    ctaWhatsapp: string | null;
   };
 
   ctaFinal: {
-    badge: string;
-    title: string;
-    subtitle: string;
-    ctaWhatsapp: string;
-    ctaCatalog: string;
-    imageAlt: string;
-    imageCaption: string;
+    badge: string | null;
+    title: string | null;
+    subtitle: string | null;
+    ctaWhatsapp: string | null;
+    ctaCatalog: string | null;
+    imageAlt: string | null;
+    imageCaption: string | null;
   };
 
   highlights: LandingHighlight[];
@@ -302,5 +302,60 @@ export const defaultLandingContent: LandingContent = {
     },
   ],
 };
+
+function emptyToNull(value: string | null | undefined) {
+  if (value === null || value === undefined) return null;
+  const v = value.trim();
+  return v ? v : null;
+}
+
+function normalizePair<T extends Record<string, unknown>>(
+  obj: T,
+  keys: Array<keyof T>
+) {
+  const out: Record<string, unknown> = { ...obj };
+  for (const k of keys) {
+    const v = out[String(k)];
+    if (typeof v === "string") out[String(k)] = emptyToNull(v);
+  }
+  return out as T;
+}
+
+export function normalizeLandingContentForSave(input: LandingContent): LandingContent {
+  const content: LandingContent = JSON.parse(JSON.stringify(input));
+
+  content.whatsappLink = emptyToNull(content.whatsappLink);
+
+  content.intro = normalizePair(content.intro, ["badge", "title", "subtitle", "ctaEnter", "ctaWhatsapp"]);
+  content.nav = normalizePair(content.nav, ["brandTitle", "brandSubtitle", "loginLabel", "loggedInLabel", "logoutLabel", "lojaLabel", "etapasLabel", "whatsappLabel"]);
+  content.hero = normalizePair(content.hero, ["badge", "title", "subtitle", "ctaSpecialist", "ctaCatalog", "imageAlt", "imageCaption"]);
+  content.diferencial = normalizePair(content.diferencial, ["badge", "title", "subtitle"]);
+  content.processo = normalizePair(content.processo, ["badge", "title", "helpCta"]);
+  content.vitrine = normalizePair(content.vitrine, ["badge", "title", "subtitle", "ctaCatalog", "emptyFallback"]);
+  content.seguranca = normalizePair(content.seguranca, ["badge", "title", "subtitle"]);
+  content.feedbacks = normalizePair(content.feedbacks, ["badge", "title", "subtitle", "prev", "next", "proofLabel"]);
+  content.faq = normalizePair(content.faq, ["badge", "title", "subtitle", "ctaWhatsapp"]);
+  content.ctaFinal = normalizePair(content.ctaFinal, ["badge", "title", "subtitle", "ctaWhatsapp", "ctaCatalog", "imageAlt", "imageCaption"]);
+
+  content.highlights = (content.highlights ?? []).map((h) => ({
+    title: emptyToNull(h.title),
+    description: emptyToNull(h.description),
+  }));
+  content.steps = (content.steps ?? []).map((s) => ({
+    title: emptyToNull(s.title),
+    description: emptyToNull(s.description),
+  }));
+  content.guarantees = (content.guarantees ?? []).map((g) => ({
+    title: emptyToNull(g.title),
+    description: emptyToNull(g.description),
+    icon: emptyToNull(g.icon),
+  }));
+  content.faqs = (content.faqs ?? []).map((f) => ({
+    question: emptyToNull(f.question),
+    answer: emptyToNull(f.answer),
+  }));
+
+  return content;
+}
 
 

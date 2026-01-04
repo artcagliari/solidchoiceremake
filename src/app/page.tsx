@@ -163,21 +163,21 @@ export default function Home() {
           style={{ transitionDelay: "120ms" }}
         >
           <span className="badge glass rounded-full px-3 py-2 reveal" data-reveal>
-            {content.intro.badge}
+            {content.intro.badge ?? ""}
           </span>
           <h1
             className="mt-6 text-5xl leading-tight tracking-wide text-[#f2d3a8] sm:text-6xl"
             data-reveal
             style={{ transitionDelay: "200ms" }}
           >
-            {content.intro.title}
+            {content.intro.title ?? ""}
           </h1>
           <p
             className="mt-4 max-w-3xl text-lg text-slate-200"
             data-reveal
             style={{ transitionDelay: "260ms" }}
           >
-            {content.intro.subtitle}
+            {content.intro.subtitle ?? ""}
           </p>
           <div
             className="mt-8 flex flex-wrap items-center justify-center gap-4"
@@ -188,14 +188,14 @@ export default function Home() {
               href="#landing"
               className="cta flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold uppercase tracking-[0.08em] transition-transform"
             >
-              {content.intro.ctaEnter}
+              {content.intro.ctaEnter ?? ""}
             </a>
             <Link
               className="cta-secondary flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] transition-colors"
-              href={content.whatsappLink}
+              href={content.whatsappLink ?? "#"}
               target="_blank"
             >
-              {content.intro.ctaWhatsapp}
+              {content.intro.ctaWhatsapp ?? ""}
             </Link>
           </div>
         </div>
@@ -215,10 +215,10 @@ export default function Home() {
               />
               <div>
                 <p className="text-sm uppercase tracking-[0.18em] text-[#f2d3a8]">
-                  {content.nav.brandTitle}
+                  {content.nav.brandTitle ?? ""}
                 </p>
                 <p className="text-xs text-slate-300">
-                  {content.nav.brandSubtitle}
+                  {content.nav.brandSubtitle ?? ""}
                 </p>
               </div>
             </div>
@@ -228,11 +228,11 @@ export default function Home() {
                   className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
                   href="/login"
                 >
-                  {content.nav.loginLabel}
+                  {content.nav.loginLabel ?? "Login"}
                 </Link>
               ) : (
                 <div className="hidden items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-200 sm:flex">
-                  {content.nav.loggedInLabel}
+                  {content.nav.loggedInLabel ?? "Logado"}
                   <span className="text-[#f2d3a8]">
                     {sessionEmail.split("@")[0]}
                   </span>
@@ -240,7 +240,7 @@ export default function Home() {
                     onClick={handleLogout}
                     className="rounded-full border border-white/20 px-3 py-1 text-[11px] uppercase tracking-[0.08em] text-slate-200 transition hover:bg-white/10"
                   >
-                    {content.nav.logoutLabel}
+                    {content.nav.logoutLabel ?? "Sair"}
                   </button>
                 </div>
               )}
@@ -248,20 +248,20 @@ export default function Home() {
                 className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
                 href="/loja"
               >
-                {content.nav.lojaLabel}
+                {content.nav.lojaLabel ?? "Loja"}
               </Link>
               <a
                 className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
                 href="#processo"
               >
-                {content.nav.etapasLabel}
+                {content.nav.etapasLabel ?? "Ver etapas"}
               </a>
               <Link
-                href={content.whatsappLink}
+                href={content.whatsappLink ?? "#"}
                 target="_blank"
                 className="cta flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
               >
-                {content.nav.whatsappLabel}
+                {content.nav.whatsappLabel ?? "Falar com a Solid"}
               </Link>
             </div>
           </div>
@@ -278,30 +278,30 @@ export default function Home() {
           <div className="relative grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5">
               <p className="badge inline-flex rounded-full px-3 py-2" data-reveal>
-                {content.hero.badge}
+                {content.hero.badge ?? ""}
               </p>
               <h2
                 className="text-4xl leading-tight text-[#f2d3a8] sm:text-5xl"
                 data-reveal
               >
-                {content.hero.title}
+                {content.hero.title ?? ""}
               </h2>
               <p className="text-lg text-slate-200" data-reveal>
-                {content.hero.subtitle}
+                {content.hero.subtitle ?? ""}
               </p>
               <div className="flex flex-wrap gap-3" data-reveal>
                 <Link
-                  href={content.whatsappLink}
+                  href={content.whatsappLink ?? "#"}
                   target="_blank"
                   className="cta flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                 >
-                  {content.hero.ctaSpecialist}
+                  {content.hero.ctaSpecialist ?? ""}
                 </Link>
                 <Link
                   href="/loja"
                   className="cta-secondary flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                 >
-                  {content.hero.ctaCatalog}
+                  {content.hero.ctaCatalog ?? ""}
                 </Link>
               </div>
               <div className="divider my-6" />
@@ -332,7 +332,7 @@ export default function Home() {
               <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#101a30] shadow-2xl">
                 <Image
                   src="/assets/banner-whats.png"
-                  alt={content.hero.imageAlt}
+                  alt={content.hero.imageAlt ?? "Preview"}
                   width={760}
                   height={760}
                   className="h-full w-full object-cover"
@@ -340,7 +340,7 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0c1428]/70 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 flex items-center gap-3 rounded-full bg-black/40 px-4 py-2 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
-                  {content.hero.imageCaption}
+                  {content.hero.imageCaption ?? ""}
                 </div>
               </div>
             </div>
@@ -356,13 +356,13 @@ export default function Home() {
           <div className="flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                {content.diferencial.badge}
+                {content.diferencial.badge ?? ""}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                {content.diferencial.title}
+                {content.diferencial.title ?? ""}
               </h3>
               <p className="mt-3 max-w-3xl text-lg text-slate-200">
-                {content.diferencial.subtitle}
+                {content.diferencial.subtitle ?? ""}
               </p>
             </div>
           </div>
@@ -392,18 +392,18 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                {content.processo.badge}
+                {content.processo.badge ?? ""}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                {content.processo.title}
+                {content.processo.title ?? ""}
               </h3>
             </div>
             <Link
-              href={content.whatsappLink}
+              href={content.whatsappLink ?? "#"}
               target="_blank"
               className="cta hidden rounded-full px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] sm:inline-flex"
             >
-              {content.processo.helpCta}
+              {content.processo.helpCta ?? ""}
             </Link>
           </div>
           <div className="relative">
@@ -442,20 +442,20 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                {content.vitrine.badge}
+                {content.vitrine.badge ?? ""}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                {content.vitrine.title}
+                {content.vitrine.title ?? ""}
               </h3>
               <p className="mt-2 text-slate-200">
-                {content.vitrine.subtitle}
+                {content.vitrine.subtitle ?? ""}
               </p>
             </div>
             <Link
               href="/loja"
               className="cta rounded-full px-5 py-3 text-sm font-semibold uppercase tracking-[0.1em]"
             >
-              {content.vitrine.ctaCatalog}
+              {content.vitrine.ctaCatalog ?? "Acessar catálogo completo"}
             </Link>
           </div>
 
@@ -463,7 +463,7 @@ export default function Home() {
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-sm text-slate-300">
               {heroError
                 ? heroError
-                : content.vitrine.emptyFallback}
+                : content.vitrine.emptyFallback ?? ""}
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -510,13 +510,13 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                {content.seguranca.badge}
+                {content.seguranca.badge ?? ""}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                {content.seguranca.title}
+                {content.seguranca.title ?? ""}
               </h3>
               <p className="mt-2 max-w-3xl text-slate-200">
-                {content.seguranca.subtitle}
+                {content.seguranca.subtitle ?? ""}
               </p>
             </div>
           </div>
@@ -530,13 +530,20 @@ export default function Home() {
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f2d3a8]/15">
-                    <Image src={item.icon} alt={item.title} width={28} height={28} />
+                    {item.icon ? (
+                      <Image
+                        src={item.icon}
+                        alt={item.title ?? "Garantia"}
+                        width={28}
+                        height={28}
+                      />
+                    ) : null}
                   </div>
                   <p className="text-sm uppercase tracking-[0.14em] text-[#f2d3a8]">
-                    {item.title}
+                    {item.title ?? ""}
                   </p>
                 </div>
-                <p className="text-sm text-slate-200">{item.description}</p>
+                <p className="text-sm text-slate-200">{item.description ?? ""}</p>
               </div>
             ))}
           </div>
@@ -552,13 +559,13 @@ export default function Home() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="badge inline-flex rounded-full px-3 py-2">
-                  {content.feedbacks.badge}
+                  {content.feedbacks.badge ?? ""}
                 </p>
                 <h3 className="mt-3 text-3xl sm:text-4xl text-[#f2d3a8]">
-                  {content.feedbacks.title}
+                  {content.feedbacks.title ?? ""}
                 </h3>
                 <p className="mt-2 max-w-3xl text-slate-200">
-                  {content.feedbacks.subtitle}
+                  {content.feedbacks.subtitle ?? ""}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -571,14 +578,14 @@ export default function Home() {
                   }
                   className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                 >
-                  {content.feedbacks.prev}
+                  {content.feedbacks.prev ?? "Anterior"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveFeedback((prev) => (prev + 1) % feedbackImages.length)}
                   className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                 >
-                  {content.feedbacks.next}
+                  {content.feedbacks.next ?? "Próximo"}
                 </button>
               </div>
             </div>
@@ -604,7 +611,7 @@ export default function Home() {
                       </div>
                       <div className="flex items-center justify-between px-4 py-3 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
                         <span>Feedback {index + 1}</span>
-                        <span className="text-[10px] text-slate-300">{content.feedbacks.proofLabel}</span>
+                        <span className="text-[10px] text-slate-300">{content.feedbacks.proofLabel ?? ""}</span>
                       </div>
                     </div>
                   );
@@ -639,21 +646,21 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                {content.faq.badge}
+                {content.faq.badge ?? ""}
               </p>
               <h3 className="mt-3 text-3xl text-[#f2d3a8] sm:text-4xl">
-                {content.faq.title}
+                {content.faq.title ?? ""}
               </h3>
               <p className="mt-2 max-w-3xl text-slate-200">
-                {content.faq.subtitle}
+                {content.faq.subtitle ?? ""}
               </p>
             </div>
             <Link
-              href={content.whatsappLink}
+              href={content.whatsappLink ?? "#"}
               target="_blank"
               className="cta rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
             >
-              {content.faq.ctaWhatsapp}
+              {content.faq.ctaWhatsapp ?? ""}
             </Link>
           </div>
 
@@ -685,27 +692,27 @@ export default function Home() {
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="reveal" data-reveal style={{ transitionDelay: "100ms" }}>
                 <p className="badge inline-flex rounded-full px-3 py-2" data-reveal>
-                  {content.ctaFinal.badge}
+                  {content.ctaFinal.badge ?? ""}
                 </p>
                 <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl" data-reveal>
-                  {content.ctaFinal.title}
+                  {content.ctaFinal.title ?? ""}
                 </h3>
                 <p className="mt-2 max-w-3xl text-lg text-slate-200" data-reveal>
-                  {content.ctaFinal.subtitle}
+                  {content.ctaFinal.subtitle ?? ""}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3" data-reveal>
                   <Link
-                    href={content.whatsappLink}
+                    href={content.whatsappLink ?? "#"}
                     target="_blank"
                     className="cta rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                   >
-                    {content.ctaFinal.ctaWhatsapp}
+                    {content.ctaFinal.ctaWhatsapp ?? ""}
                   </Link>
                   <Link
                     href="/loja"
                     className="cta-secondary rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                   >
-                    {content.ctaFinal.ctaCatalog}
+                    {content.ctaFinal.ctaCatalog ?? ""}
                   </Link>
                 </div>
               </div>
@@ -716,14 +723,14 @@ export default function Home() {
               >
                 <Image
                   src="/assets/banner-whats.png"
-                  alt={content.ctaFinal.imageAlt}
+                  alt={content.ctaFinal.imageAlt ?? "Contato"}
                   width={960}
                   height={720}
                   className="h-full w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0c1428]/85 via-transparent to-transparent" />
                 <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
-                  {content.ctaFinal.imageCaption}
+                  {content.ctaFinal.imageCaption ?? ""}
                 </div>
               </div>
             </div>
