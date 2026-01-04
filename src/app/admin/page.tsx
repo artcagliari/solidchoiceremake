@@ -85,9 +85,13 @@ export default function AdminPage() {
   const [orderSearch, setOrderSearch] = useState("");
 
   // Landing editable content (mini CMS)
-  const [landingJson, setLandingJson] = useState<string>(
+  const [landingContent, setLandingContent] = useState<LandingContent>(
+    defaultLandingContent
+  );
+  const [landingAdvancedJson, setLandingAdvancedJson] = useState<string>(
     JSON.stringify(defaultLandingContent, null, 2)
   );
+  const [landingShowAdvanced, setLandingShowAdvanced] = useState(false);
   const [landingLoading, setLandingLoading] = useState(false);
   const [landingMsg, setLandingMsg] = useState<string | null>(null);
 
@@ -204,7 +208,8 @@ export default function AdminPage() {
       });
       const json = (await res.json()) as { content?: LandingContent; error?: string };
       if (json?.content) {
-        setLandingJson(JSON.stringify(json.content, null, 2));
+        setLandingContent(json.content);
+        setLandingAdvancedJson(JSON.stringify(json.content, null, 2));
         setLandingMsg("Conteúdo carregado do Supabase.");
       } else {
         setLandingMsg(
@@ -224,22 +229,22 @@ export default function AdminPage() {
     setLandingLoading(true);
     setLandingMsg(null);
     try {
-      const parsed = JSON.parse(landingJson) as LandingContent;
       const res = await fetch("/api/admin/landing", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${t}`,
         },
-        body: JSON.stringify({ content: parsed }),
+        body: JSON.stringify({ content: landingContent }),
       });
       if (!res.ok) throw new Error(await res.text());
+      setLandingAdvancedJson(JSON.stringify(landingContent, null, 2));
       setLandingMsg("Conteúdo salvo no Supabase.");
     } catch (err) {
       const msg =
         err instanceof Error
           ? err.message
-          : "Erro ao salvar (JSON inválido?).";
+          : "Erro ao salvar.";
       setLandingMsg(msg);
     } finally {
       setLandingLoading(false);
@@ -935,7 +940,10 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setLandingJson(JSON.stringify(defaultLandingContent, null, 2));
+                  setLandingContent(defaultLandingContent);
+                  setLandingAdvancedJson(
+                    JSON.stringify(defaultLandingContent, null, 2)
+                  );
                   setLandingMsg("Padrão local carregado (ainda não salvo).");
                 }}
                 disabled={landingLoading}
@@ -951,6 +959,13 @@ export default function AdminPage() {
               >
                 Salvar
               </button>
+              <Link
+                href="/"
+                target="_blank"
+                className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+              >
+                Abrir preview
+              </Link>
             </div>
           </div>
 
@@ -960,13 +975,436 @@ export default function AdminPage() {
             </div>
           ) : null}
 
-          <div className="mt-4">
-            <textarea
-              value={landingJson}
-              onChange={(e) => setLandingJson(e.target.value)}
-              spellCheck={false}
-              className="min-h-[420px] w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs text-slate-100 outline-none focus:border-[#f2d3a8]/40"
-            />
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.95fr]">
+            {/* Editor visual */}
+            <div className="space-y-4">
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4" open>
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  Intro (primeira dobra)
+                </summary>
+                <div className="mt-4 grid gap-3">
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Badge</span>
+                    <input
+                      value={landingContent.intro.badge}
+                      onChange={(e) =>
+                        setLandingContent((prev) => ({
+                          ...prev,
+                          intro: { ...prev.intro, badge: e.target.value },
+                        }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Título</span>
+                    <input
+                      value={landingContent.intro.title}
+                      onChange={(e) =>
+                        setLandingContent((prev) => ({
+                          ...prev,
+                          intro: { ...prev.intro, title: e.target.value },
+                        }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Subtítulo</span>
+                    <textarea
+                      value={landingContent.intro.subtitle}
+                      onChange={(e) =>
+                        setLandingContent((prev) => ({
+                          ...prev,
+                          intro: { ...prev.intro, subtitle: e.target.value },
+                        }))
+                      }
+                      className="mt-2 min-h-24 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Botão 1</span>
+                      <input
+                        value={landingContent.intro.ctaEnter}
+                        onChange={(e) =>
+                          setLandingContent((prev) => ({
+                            ...prev,
+                            intro: { ...prev.intro, ctaEnter: e.target.value },
+                          }))
+                        }
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Botão 2</span>
+                      <input
+                        value={landingContent.intro.ctaWhatsapp}
+                        onChange={(e) =>
+                          setLandingContent((prev) => ({
+                            ...prev,
+                            intro: { ...prev.intro, ctaWhatsapp: e.target.value },
+                          }))
+                        }
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  Botões / WhatsApp
+                </summary>
+                <div className="mt-4 grid gap-3">
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Link do WhatsApp</span>
+                    <input
+                      value={landingContent.whatsappLink}
+                      onChange={(e) =>
+                        setLandingContent((prev) => ({ ...prev, whatsappLink: e.target.value }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    />
+                  </label>
+                </div>
+              </details>
+
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  Hero (seção principal)
+                </summary>
+                <div className="mt-4 grid gap-3">
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Badge</span>
+                    <input
+                      value={landingContent.hero.badge}
+                      onChange={(e) =>
+                        setLandingContent((prev) => ({
+                          ...prev,
+                          hero: { ...prev.hero, badge: e.target.value },
+                        }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Título</span>
+                    <input
+                      value={landingContent.hero.title}
+                      onChange={(e) =>
+                        setLandingContent((prev) => ({
+                          ...prev,
+                          hero: { ...prev.hero, title: e.target.value },
+                        }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Subtítulo</span>
+                    <textarea
+                      value={landingContent.hero.subtitle}
+                      onChange={(e) =>
+                        setLandingContent((prev) => ({
+                          ...prev,
+                          hero: { ...prev.hero, subtitle: e.target.value },
+                        }))
+                      }
+                      className="mt-2 min-h-24 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">CTA WhatsApp</span>
+                      <input
+                        value={landingContent.hero.ctaSpecialist}
+                        onChange={(e) =>
+                          setLandingContent((prev) => ({
+                            ...prev,
+                            hero: { ...prev.hero, ctaSpecialist: e.target.value },
+                          }))
+                        }
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">CTA Catálogo</span>
+                      <input
+                        value={landingContent.hero.ctaCatalog}
+                        onChange={(e) =>
+                          setLandingContent((prev) => ({
+                            ...prev,
+                            hero: { ...prev.hero, ctaCatalog: e.target.value },
+                          }))
+                        }
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  Highlights (cards)
+                </summary>
+                <div className="mt-4 space-y-3">
+                  {landingContent.highlights.map((h, idx) => (
+                    <div key={`${h.title}-${idx}`} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                          Item {idx + 1}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLandingContent((prev) => ({
+                              ...prev,
+                              highlights: prev.highlights.filter((_, i) => i !== idx),
+                            }))
+                          }
+                          className="cta-secondary rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                      <div className="mt-3 grid gap-3">
+                        <input
+                          value={h.title}
+                          onChange={(e) =>
+                            setLandingContent((prev) => ({
+                              ...prev,
+                              highlights: prev.highlights.map((x, i) =>
+                                i === idx ? { ...x, title: e.target.value } : x
+                              ),
+                            }))
+                          }
+                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="Título"
+                        />
+                        <textarea
+                          value={h.description}
+                          onChange={(e) =>
+                            setLandingContent((prev) => ({
+                              ...prev,
+                              highlights: prev.highlights.map((x, i) =>
+                                i === idx ? { ...x, description: e.target.value } : x
+                              ),
+                            }))
+                          }
+                          className="min-h-20 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="Descrição"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLandingContent((prev) => ({
+                        ...prev,
+                        highlights: [
+                          ...prev.highlights,
+                          { title: "Novo título", description: "Nova descrição" },
+                        ],
+                      }))
+                    }
+                    className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                  >
+                    Adicionar highlight
+                  </button>
+                </div>
+              </details>
+
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  FAQ
+                </summary>
+                <div className="mt-4 space-y-3">
+                  {landingContent.faqs.map((f, idx) => (
+                    <div key={`${f.question}-${idx}`} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                          Pergunta {idx + 1}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLandingContent((prev) => ({
+                              ...prev,
+                              faqs: prev.faqs.filter((_, i) => i !== idx),
+                            }))
+                          }
+                          className="cta-secondary rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                      <div className="mt-3 grid gap-3">
+                        <input
+                          value={f.question}
+                          onChange={(e) =>
+                            setLandingContent((prev) => ({
+                              ...prev,
+                              faqs: prev.faqs.map((x, i) =>
+                                i === idx ? { ...x, question: e.target.value } : x
+                              ),
+                            }))
+                          }
+                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="Pergunta"
+                        />
+                        <textarea
+                          value={f.answer}
+                          onChange={(e) =>
+                            setLandingContent((prev) => ({
+                              ...prev,
+                              faqs: prev.faqs.map((x, i) =>
+                                i === idx ? { ...x, answer: e.target.value } : x
+                              ),
+                            }))
+                          }
+                          className="min-h-24 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="Resposta"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLandingContent((prev) => ({
+                        ...prev,
+                        faqs: [
+                          ...prev.faqs,
+                          { question: "Nova pergunta?", answer: "Nova resposta." },
+                        ],
+                      }))
+                    }
+                    className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                  >
+                    Adicionar pergunta
+                  </button>
+                </div>
+              </details>
+
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  Modo avançado (JSON)
+                </summary>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-slate-300">
+                    Só para debug. O visual editor é o recomendado.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setLandingShowAdvanced((v) => !v)}
+                    className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                  >
+                    {landingShowAdvanced ? "Esconder" : "Mostrar"}
+                  </button>
+                </div>
+                {landingShowAdvanced ? (
+                  <div className="mt-4 space-y-3">
+                    <textarea
+                      value={landingAdvancedJson}
+                      onChange={(e) => setLandingAdvancedJson(e.target.value)}
+                      spellCheck={false}
+                      className="min-h-[260px] w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs text-slate-100 outline-none focus:border-[#f2d3a8]/40"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            const parsed = JSON.parse(landingAdvancedJson) as LandingContent;
+                            setLandingContent(parsed);
+                            setLandingMsg("JSON aplicado no editor (ainda não salvo).");
+                          } catch {
+                            setLandingMsg("JSON inválido.");
+                          }
+                        }}
+                        className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                      >
+                        Aplicar JSON no editor
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLandingAdvancedJson(JSON.stringify(landingContent, null, 2))}
+                        className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                      >
+                        Gerar JSON do editor
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </details>
+            </div>
+
+            {/* Prévia rápida */}
+            <div className="space-y-4">
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
+                  Prévia (rápida)
+                </p>
+                <h3 className="mt-2 text-3xl text-[#f2d3a8]">
+                  {landingContent.intro.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-200">
+                  {landingContent.intro.subtitle}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="badge rounded-full px-3 py-1 text-[11px]">
+                    {landingContent.intro.ctaEnter}
+                  </span>
+                  <span className="badge rounded-full px-3 py-1 text-[11px]">
+                    {landingContent.intro.ctaWhatsapp}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
+                  Hero
+                </p>
+                <p className="mt-2 text-sm text-slate-200">{landingContent.hero.badge}</p>
+                <h3 className="mt-2 text-2xl text-[#f2d3a8]">{landingContent.hero.title}</h3>
+                <p className="mt-2 text-sm text-slate-200">{landingContent.hero.subtitle}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="badge rounded-full px-3 py-1 text-[11px]">
+                    {landingContent.hero.ctaSpecialist}
+                  </span>
+                  <span className="badge rounded-full px-3 py-1 text-[11px]">
+                    {landingContent.hero.ctaCatalog}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
+                  Highlights ({landingContent.highlights.length})
+                </p>
+                <div className="mt-3 space-y-2">
+                  {landingContent.highlights.slice(0, 3).map((h, idx) => (
+                    <div key={`${h.title}-${idx}`} className="rounded-2xl border border-white/10 bg-black/10 p-3">
+                      <p className="text-sm font-semibold text-slate-100">{h.title}</p>
+                      <p className="mt-1 text-xs text-slate-300">{h.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
+                  FAQ ({landingContent.faqs.length})
+                </p>
+                <p className="mt-2 text-sm text-slate-200">
+                  Exemplo: {landingContent.faqs[0]?.question ?? "—"}
+                </p>
+              </div>
+            </div>
           </div>
         </section>
       </div>
