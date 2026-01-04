@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { defaultLandingContent, type LandingContent } from "@/lib/landingContent";
 
 type Product = {
   id: string;
@@ -82,6 +83,13 @@ export default function AdminPage() {
     "pending" | "confirmed" | "canceled" | "all"
   >("pending");
   const [orderSearch, setOrderSearch] = useState("");
+
+  // Landing editable content (mini CMS)
+  const [landingJson, setLandingJson] = useState<string>(
+    JSON.stringify(defaultLandingContent, null, 2)
+  );
+  const [landingLoading, setLandingLoading] = useState(false);
+  const [landingMsg, setLandingMsg] = useState<string | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -187,6 +195,57 @@ export default function AdminPage() {
     setOrders(Array.isArray(oJson.items) ? oJson.items : []);
   };
 
+  const loadLanding = async (t: string) => {
+    setLandingLoading(true);
+    setLandingMsg(null);
+    try {
+      const res = await fetch("/api/admin/landing", {
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      const json = (await res.json()) as { content?: LandingContent; error?: string };
+      if (json?.content) {
+        setLandingJson(JSON.stringify(json.content, null, 2));
+        setLandingMsg("Conteúdo carregado do Supabase.");
+      } else {
+        setLandingMsg(
+          "Não foi possível carregar do Supabase. Usando padrão local."
+        );
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Erro ao carregar conteúdo.";
+      setLandingMsg(msg);
+    } finally {
+      setLandingLoading(false);
+    }
+  };
+
+  const saveLanding = async (t: string) => {
+    setLandingLoading(true);
+    setLandingMsg(null);
+    try {
+      const parsed = JSON.parse(landingJson) as LandingContent;
+      const res = await fetch("/api/admin/landing", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${t}`,
+        },
+        body: JSON.stringify({ content: parsed }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setLandingMsg("Conteúdo salvo no Supabase.");
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Erro ao salvar (JSON inválido?).";
+      setLandingMsg(msg);
+    } finally {
+      setLandingLoading(false);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -200,6 +259,7 @@ export default function AdminPage() {
       setToken(t);
       try {
         await fetchAll(t);
+        await loadLanding(t);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro carregando admin.";
         setError(msg);
@@ -846,6 +906,67 @@ export default function AdminPage() {
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        {/* Landing (texto editável) */}
+        <section className="mt-10 section-shell rounded-3xl p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
+                Landing · Textos editáveis
+              </h2>
+              <p className="mt-2 text-sm text-slate-200">
+                Isso <b>não apaga</b> a landing. Apenas troca os textos por valores do banco.
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Pré-requisito: rode o arquivo <span className="text-slate-200">supabase_landing_content.sql</span> no Supabase.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => token && loadLanding(token)}
+                disabled={!token || landingLoading}
+                className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+              >
+                Recarregar do banco
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLandingJson(JSON.stringify(defaultLandingContent, null, 2));
+                  setLandingMsg("Padrão local carregado (ainda não salvo).");
+                }}
+                disabled={landingLoading}
+                className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+              >
+                Restaurar padrão
+              </button>
+              <button
+                type="button"
+                onClick={() => token && saveLanding(token)}
+                disabled={!token || landingLoading}
+                className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+
+          {landingMsg ? (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+              {landingMsg}
+            </div>
+          ) : null}
+
+          <div className="mt-4">
+            <textarea
+              value={landingJson}
+              onChange={(e) => setLandingJson(e.target.value)}
+              spellCheck={false}
+              className="min-h-[420px] w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs text-slate-100 outline-none focus:border-[#f2d3a8]/40"
+            />
           </div>
         </section>
       </div>

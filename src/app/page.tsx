@@ -5,50 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { defaultLandingContent, type LandingContent } from "@/lib/landingContent";
 
-const whatsappLink =
-  "https://wa.me/5554992739597?text=Quero%20importar%20com%20a%20Solid%20Choice";
-
-const highlights = [
-  {
-    title: "Compra assistida premium",
-    description:
-      "Curadoria sob medida direto do mercado interno chinês, com aprovação por fotos reais antes de qualquer pagamento.",
-  },
-  {
-    title: "Escala e rareza",
-    description:
-      "Acesso a milhões de opções: réplicas top tier, custo-benefício e achados exclusivos que não aparecem em catálogos comuns.",
-  },
-  {
-    title: "Suporte humano de ponta a ponta",
-    description:
-      "A Solid busca, você aprova, nós garantimos o envio. Transparência total, sem taxas ocultas.",
-  },
-];
-
-const steps = [
-  {
-    title: "Você escolhe",
-    description:
-      "Conta o que deseja; buscamos, mostramos opções reais (catálogo ou histórico) e você aprova.",
-  },
-  {
-    title: "Chega no armazém",
-    description:
-      "Em 7 a 10 dias o item chega ao nosso armazém na China. Enviamos fotos reais do produto.",
-  },
-  {
-    title: "Você aprova ou troca",
-    description:
-      "Não curtiu? Solicite troca ou reembolso com total liberdade. Só avançamos se você estiver satisfeito.",
-  },
-  {
-    title: "A Solid envia",
-    description:
-      "Com aprovação e dados confirmados, despachamos para o Brasil. Em média, 15 dias depois, o produto está na sua porta.",
-  },
-];
 
 type HeroCard = {
   name: string;
@@ -58,65 +16,6 @@ type HeroCard = {
   slug?: string | null;
   category?: string | null;
 };
-
-const guarantees = [
-  {
-    title: "Produto garantido",
-    description:
-      "Enviamos exatamente como você aprovou, com base nas fotos recebidas do armazém.",
-    icon: "/assets/icon-shield.png",
-  },
-  {
-    title: "Preço final é o que você paga",
-    description:
-      "Sem taxas extras. A Solid cobre eventuais custos de importação para você.",
-    icon: "/assets/icon-money.png",
-  },
-  {
-    title: "Seguro contra extravio",
-    description:
-      "Se o pacote for negado ou extraviado, refazemos a compra. Você não perde dinheiro.",
-    icon: "/assets/icon-truck.png",
-  },
-];
-
-const faqs = [
-  {
-    question: "Como posso rastrear meu pedido?",
-    answer:
-      "Assim que confirmamos a compra, você recebe o código de rastreio por e-mail e WhatsApp. Os status também ficam na área logada em “Meus Pedidos”.",
-  },
-  {
-    question: "Os produtos possuem nota fiscal?",
-    answer:
-      "Sim. Emitimos nota fiscal da compra. Todo item aprovado e enviado sai com documentação para garantir a procedência.",
-  },
-  {
-    question: "Quais formas de pagamento vocês aceitam?",
-    answer:
-      "Pix com 10% OFF, cartão em até 6x sem juros, ou até 12x com juros mínimo. Para drops especiais, confirmamos no WhatsApp.",
-  },
-  {
-    question: "Qual o prazo de entrega?",
-    answer:
-      "Após sua aprovação, o item leva em média 7 a 10 dias para chegar ao armazém na China. Depois de aprovado e despachado, são ~15 dias para chegar no Brasil. Há frete grátis (7-18 dias úteis) e expresso (5-12 dias úteis).",
-  },
-  {
-    question: "Os produtos possuem garantia?",
-    answer:
-      "Garantia de 30 dias contra defeitos de fábrica a partir do recebimento. Se algo não estiver ok, nossa equipe resolve com troca ou reembolso conforme o caso.",
-  },
-  {
-    question: "Qual o prazo para troca ou devolução?",
-    answer:
-      "Você tem 7 dias corridos após o recebimento para solicitar troca ou devolução, conforme o Código de Defesa do Consumidor (CDC).",
-  },
-  {
-    question: "Como falar com a Solid?",
-    answer:
-      "Pelo WhatsApp oficial, pelo e-mail comercial ou pelo suporte integrado no site. Resposta humana e rápida para manter o fluxo transparente.",
-  },
-];
 
 const feedbackImages = [
   "/assets/feedback1.jpeg",
@@ -133,6 +32,7 @@ const feedbackImages = [
 ];
 
 export default function Home() {
+  const [content, setContent] = useState<LandingContent>(defaultLandingContent);
   const [activeFeedback, setActiveFeedback] = useState(0);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [heroProducts, setHeroProducts] = useState<HeroCard[]>([]);
@@ -177,6 +77,19 @@ export default function Home() {
     return () => {
       listener?.subscription.unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    const loadLanding = async () => {
+      try {
+        const res = await fetch("/api/landing", { cache: "no-store" });
+        const json = (await res.json()) as { content?: LandingContent };
+        if (json?.content) setContent(json.content);
+      } catch {
+        // mantém defaults
+      }
+    };
+    loadLanding();
   }, []);
 
   useEffect(() => {
@@ -250,22 +163,21 @@ export default function Home() {
           style={{ transitionDelay: "120ms" }}
         >
           <span className="badge glass rounded-full px-3 py-2 reveal" data-reveal>
-            Fugazzi culture · Cinematic intro
+            {content.intro.badge}
           </span>
           <h1
             className="mt-6 text-5xl leading-tight tracking-wide text-[#f2d3a8] sm:text-6xl"
             data-reveal
             style={{ transitionDelay: "200ms" }}
           >
-            Qualidade, Exclusividade e Garantia Total
+            {content.intro.title}
           </h1>
           <p
             className="mt-4 max-w-3xl text-lg text-slate-200"
             data-reveal
             style={{ transitionDelay: "260ms" }}
           >
-            Bem-vindo à Solid Choice. A Solid busca, você aprova, e o produto
-            chega até você. Simples assim.
+            {content.intro.subtitle}
           </p>
           <div
             className="mt-8 flex flex-wrap items-center justify-center gap-4"
@@ -276,14 +188,14 @@ export default function Home() {
               href="#landing"
               className="cta flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold uppercase tracking-[0.08em] transition-transform"
             >
-              Entrar na experiência
+              {content.intro.ctaEnter}
             </a>
             <Link
               className="cta-secondary flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] transition-colors"
-              href={whatsappLink}
+              href={content.whatsappLink}
               target="_blank"
             >
-              Falar no WhatsApp
+              {content.intro.ctaWhatsapp}
             </Link>
           </div>
         </div>
@@ -303,10 +215,10 @@ export default function Home() {
               />
               <div>
                 <p className="text-sm uppercase tracking-[0.18em] text-[#f2d3a8]">
-                  Solid Choice
+                  {content.nav.brandTitle}
                 </p>
                 <p className="text-xs text-slate-300">
-                  Fugazzi Culture · Since 2017
+                  {content.nav.brandSubtitle}
                 </p>
               </div>
             </div>
@@ -316,11 +228,11 @@ export default function Home() {
                   className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
                   href="/login"
                 >
-                  Login
+                  {content.nav.loginLabel}
                 </Link>
               ) : (
                 <div className="hidden items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-200 sm:flex">
-                  Logado
+                  {content.nav.loggedInLabel}
                   <span className="text-[#f2d3a8]">
                     {sessionEmail.split("@")[0]}
                   </span>
@@ -328,7 +240,7 @@ export default function Home() {
                     onClick={handleLogout}
                     className="rounded-full border border-white/20 px-3 py-1 text-[11px] uppercase tracking-[0.08em] text-slate-200 transition hover:bg-white/10"
                   >
-                    Sair
+                    {content.nav.logoutLabel}
                   </button>
                 </div>
               )}
@@ -336,20 +248,20 @@ export default function Home() {
                 className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
                 href="/loja"
               >
-                Loja
+                {content.nav.lojaLabel}
               </Link>
               <a
                 className="cta-secondary hidden items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors sm:flex"
                 href="#processo"
               >
-                Ver etapas
+                {content.nav.etapasLabel}
               </a>
               <Link
-                href={whatsappLink}
+                href={content.whatsappLink}
                 target="_blank"
                 className="cta flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
               >
-                Falar com a Solid
+                {content.nav.whatsappLabel}
               </Link>
             </div>
           </div>
@@ -366,37 +278,35 @@ export default function Home() {
           <div className="relative grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5">
               <p className="badge inline-flex rounded-full px-3 py-2" data-reveal>
-                Landing · Vitrine de conversão
+                {content.hero.badge}
               </p>
               <h2
                 className="text-4xl leading-tight text-[#f2d3a8] sm:text-5xl"
                 data-reveal
               >
-                Qualidade, Exclusividade e Garantia Total
+                {content.hero.title}
               </h2>
               <p className="text-lg text-slate-200" data-reveal>
-                A Solid busca, você aprova, e o produto chega até você. Cada
-                passo é personalizado para entregar luxo, precisão e zero dor de
-                cabeça.
+                {content.hero.subtitle}
               </p>
               <div className="flex flex-wrap gap-3" data-reveal>
                 <Link
-                  href={whatsappLink}
+                  href={content.whatsappLink}
                   target="_blank"
                   className="cta flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                 >
-                  Falar com especialista
+                  {content.hero.ctaSpecialist}
                 </Link>
                 <Link
                   href="/loja"
                   className="cta-secondary flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                 >
-                  Ver catálogo aberto
+                  {content.hero.ctaCatalog}
                 </Link>
               </div>
               <div className="divider my-6" />
               <div className="grid gap-4 sm:grid-cols-3">
-                {highlights.map((item, index) => (
+                {content.highlights.map((item, index) => (
                   <div
                     key={item.title}
                     className="glass rounded-2xl p-4 text-left reveal"
@@ -422,7 +332,7 @@ export default function Home() {
               <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#101a30] shadow-2xl">
                 <Image
                   src="/assets/banner-whats.png"
-                  alt="Solid Choice Preview"
+                  alt={content.hero.imageAlt}
                   width={760}
                   height={760}
                   className="h-full w-full object-cover"
@@ -430,7 +340,7 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0c1428]/70 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 flex items-center gap-3 rounded-full bg-black/40 px-4 py-2 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
-                  Cinematic landing · Deep blue + cream
+                  {content.hero.imageCaption}
                 </div>
               </div>
             </div>
@@ -446,20 +356,18 @@ export default function Home() {
           <div className="flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                Seção 01 · O Diferencial
+                {content.diferencial.badge}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                O que é o Redirecionamento Solid
+                {content.diferencial.title}
               </h3>
               <p className="mt-3 max-w-3xl text-lg text-slate-200">
-                Compra assistida direto da China, do seu jeito. Cada cliente é
-                único: da réplica top tier ao custo-benefício perfeito, ou
-                aquele item que parecia impossível de encontrar.
+                {content.diferencial.subtitle}
               </p>
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            {highlights.map((item, index) => (
+            {content.highlights.map((item, index) => (
               <div
                 key={item.title}
                 className="section-shell rounded-2xl p-5 shadow-xl reveal"
@@ -484,24 +392,24 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                Seção 02 · Como funciona
+                {content.processo.badge}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                Do pedido ao seu endereço, em 4 passos simples
+                {content.processo.title}
               </h3>
             </div>
             <Link
-              href={whatsappLink}
+              href={content.whatsappLink}
               target="_blank"
               className="cta hidden rounded-full px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] sm:inline-flex"
             >
-              Preciso de ajuda
+              {content.processo.helpCta}
             </Link>
           </div>
           <div className="relative">
             <div className="absolute left-8 top-0 hidden h-full w-px bg-gradient-to-b from-[#f2d3a8]/40 via-[#f2d3a8]/10 to-transparent sm:block" />
             <div className="grid gap-6 sm:grid-cols-2">
-              {steps.map((step, index) => (
+              {content.steps.map((step, index) => (
                 <div
                   key={step.title}
                   className="glass relative flex gap-4 rounded-2xl p-5 reveal"
@@ -534,21 +442,20 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                Seção 04 · Mais vendidos
+                {content.vitrine.badge}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                Vitrine Hero · produtos mais desejados
+                {content.vitrine.title}
               </h3>
               <p className="mt-2 text-slate-200">
-                Um teaser curado das peças que convertem. O catálogo completo
-                segue logo abaixo.
+                {content.vitrine.subtitle}
               </p>
             </div>
             <Link
               href="/loja"
               className="cta rounded-full px-5 py-3 text-sm font-semibold uppercase tracking-[0.1em]"
             >
-              Acessar catálogo completo
+              {content.vitrine.ctaCatalog}
             </Link>
           </div>
 
@@ -556,7 +463,7 @@ export default function Home() {
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-sm text-slate-300">
               {heroError
                 ? heroError
-                : "Nenhum produto para exibir aqui ainda. Confira o catálogo completo."}
+                : content.vitrine.emptyFallback}
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -603,19 +510,18 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                Seção 06 · Segurança total
+                {content.seguranca.badge}
               </p>
               <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl">
-                Garantias e segurança total · a Solid assume tudo
+                {content.seguranca.title}
               </h3>
               <p className="mt-2 max-w-3xl text-slate-200">
-                Selos de confiança, processos claros e cobertura completa para
-                você importar sem risco.
+                {content.seguranca.subtitle}
               </p>
             </div>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
-            {guarantees.map((item, index) => (
+            {content.guarantees.map((item, index) => (
               <div
                 key={item.title}
                 className="section-shell flex flex-col gap-4 rounded-2xl p-5 reveal"
@@ -646,14 +552,13 @@ export default function Home() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="badge inline-flex rounded-full px-3 py-2">
-                  Feedbacks reais · Prova social
+                  {content.feedbacks.badge}
                 </p>
                 <h3 className="mt-3 text-3xl sm:text-4xl text-[#f2d3a8]">
-                  Clientes que já importaram com a Solid
+                  {content.feedbacks.title}
                 </h3>
                 <p className="mt-2 max-w-3xl text-slate-200">
-                  Capturas de atendimento e entregas confirmam a experiência
-                  segura, humana e transparente.
+                  {content.feedbacks.subtitle}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -666,14 +571,14 @@ export default function Home() {
                   }
                   className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                 >
-                  Anterior
+                  {content.feedbacks.prev}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveFeedback((prev) => (prev + 1) % feedbackImages.length)}
                   className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                 >
-                  Próximo
+                  {content.feedbacks.next}
                 </button>
               </div>
             </div>
@@ -699,7 +604,7 @@ export default function Home() {
                       </div>
                       <div className="flex items-center justify-between px-4 py-3 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
                         <span>Feedback {index + 1}</span>
-                        <span className="text-[10px] text-slate-300">Prova social</span>
+                        <span className="text-[10px] text-slate-300">{content.feedbacks.proofLabel}</span>
                       </div>
                     </div>
                   );
@@ -734,31 +639,31 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="badge inline-flex rounded-full px-3 py-2">
-                Perguntas Frequentes · Solid Choice
+                {content.faq.badge}
               </p>
               <h3 className="mt-3 text-3xl text-[#f2d3a8] sm:text-4xl">
-                Tudo o que você precisa saber
+                {content.faq.title}
               </h3>
               <p className="mt-2 max-w-3xl text-slate-200">
-                Transparência total: prazos, garantias, pagamentos e suporte.
+                {content.faq.subtitle}
               </p>
             </div>
             <Link
-              href={whatsappLink}
+              href={content.whatsappLink}
               target="_blank"
               className="cta rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
             >
-              Falar com a Solid
+              {content.faq.ctaWhatsapp}
             </Link>
           </div>
 
           <div className="section-shell rounded-3xl border border-white/10">
-            {faqs.map((item, index) => (
+            {content.faqs.map((item, index) => (
               <details
                 key={item.question}
                 className={`group border-b border-white/5 px-5 py-4 last:border-b-0 ${
                   index === 0 ? "rounded-t-3xl" : ""
-                } ${index === faqs.length - 1 ? "rounded-b-3xl" : ""}`}
+                } ${index === content.faqs.length - 1 ? "rounded-b-3xl" : ""}`}
               >
                 <summary className="flex cursor-pointer items-center justify-between gap-4 text-left text-[#f2d3a8]">
                   <span className="text-base font-semibold">{item.question}</span>
@@ -780,29 +685,27 @@ export default function Home() {
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="reveal" data-reveal style={{ transitionDelay: "100ms" }}>
                 <p className="badge inline-flex rounded-full px-3 py-2" data-reveal>
-                  Seção 07 · CTA final
+                  {content.ctaFinal.badge}
                 </p>
                 <h3 className="mt-4 text-3xl text-[#f2d3a8] sm:text-4xl" data-reveal>
-                  Quer importar com segurança, transparência e suporte real?
+                  {content.ctaFinal.title}
                 </h3>
                 <p className="mt-2 max-w-3xl text-lg text-slate-200" data-reveal>
-                  A Solid Choice combina estética cinematográfica com operação
-                  high-end: UX/UI refinado, dados no Supabase e performance
-                  otimizada.
+                  {content.ctaFinal.subtitle}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3" data-reveal>
                   <Link
-                    href={whatsappLink}
+                    href={content.whatsappLink}
                     target="_blank"
                     className="cta rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                   >
-                    Falar com a Solid via WhatsApp
+                    {content.ctaFinal.ctaWhatsapp}
                   </Link>
                   <Link
                     href="/loja"
                     className="cta-secondary rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em]"
                   >
-                    Ver catálogo
+                    {content.ctaFinal.ctaCatalog}
                   </Link>
                 </div>
               </div>
@@ -813,14 +716,14 @@ export default function Home() {
               >
                 <Image
                   src="/assets/banner-whats.png"
-                  alt="Contato Solid Choice"
+                  alt={content.ctaFinal.imageAlt}
                   width={960}
                   height={720}
                   className="h-full w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0c1428]/85 via-transparent to-transparent" />
                 <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-xs uppercase tracking-[0.12em] text-[#f2d3a8]">
-                  Atendimento humano · Resposta rápida
+                  {content.ctaFinal.imageCaption}
                 </div>
               </div>
             </div>
