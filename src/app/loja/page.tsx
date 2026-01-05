@@ -11,6 +11,7 @@ type Product = {
   name: string;
   slug: string | null;
   category: string | null;
+  brand: string | null;
   price_cents: number | null;
   hero_image: string | null;
 };
@@ -23,35 +24,137 @@ function priceLabel(price_cents: number | null) {
 export default async function LojaPage({
   searchParams,
 }: {
-  searchParams?: { cat?: string };
+  searchParams?: { cat?: string; main?: string; brand?: string };
 }) {
   const { data, error } = await supabaseAdmin
     .from("products")
-    .select("id,name,slug,category,price_cents,hero_image,created_at")
+    .select("id,name,slug,category,brand,price_cents,hero_image,created_at")
     .order("created_at", { ascending: false });
 
   const items = (data ?? []) as unknown as Product[];
 
-  const byCategory = new Map<string, Product[]>();
-  for (const p of items) {
-    const cat = (p.category ?? "Outros").trim() || "Outros";
-    const list = byCategory.get(cat) ?? [];
-    list.push(p);
-    byCategory.set(cat, list);
-  }
+  const mainRaw = typeof searchParams?.main === "string" ? searchParams.main : null;
+  const main = mainRaw ? mainRaw.trim().toLowerCase() : null; // sneakers | vestuario
+  const isMainSelected = main === "sneakers" || main === "vestuario";
 
-  const categories = Array.from(byCategory.keys()).sort((a, b) =>
-    a.localeCompare(b, "pt-BR")
+  const selectedCatRaw =
+    typeof searchParams?.cat === "string" ? searchParams.cat : null;
+  const selectedCat = selectedCatRaw ? selectedCatRaw.trim() : null;
+
+  const selectedBrandRaw =
+    typeof searchParams?.brand === "string" ? searchParams.brand : null;
+  const selectedBrand = selectedBrandRaw ? selectedBrandRaw.trim() : null;
+
+  const isFootwearCategory = (cat: string) => {
+    const c = cat.toLowerCase();
+    return (
+      c.includes("cal") ||
+      c.includes("tenis") ||
+      c.includes("tênis") ||
+      c.includes("sneaker")
+    );
+  };
+
+  const footwearProducts = items.filter((p) =>
+    isFootwearCategory(p.category ?? "Calçado")
+  );
+  const clothingProducts = items.filter(
+    (p) => !isFootwearCategory(p.category ?? "Outros")
   );
 
-  const selectedCatRaw = typeof searchParams?.cat === "string" ? searchParams.cat : null;
-  const selectedCat = selectedCatRaw ? selectedCatRaw.trim() : null;
-  const isFiltered = Boolean(selectedCat);
-  const visibleCategories = isFiltered
-    ? selectedCat && byCategory.has(selectedCat)
+  const clothingByCategory = new Map<string, Product[]>();
+  for (const p of clothingProducts) {
+    const cat = (p.category ?? "Outros").trim() || "Outros";
+    const list = clothingByCategory.get(cat) ?? [];
+    list.push(p);
+    clothingByCategory.set(cat, list);
+  }
+  const clothingCategories = Array.from(clothingByCategory.keys()).sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
+  const visibleClothingCategories =
+    selectedCat && clothingByCategory.has(selectedCat)
       ? [selectedCat]
-      : []
-    : categories;
+      : clothingCategories;
+
+  const byBrand = new Map<string, Product[]>();
+  for (const p of footwearProducts) {
+    const b = (p.brand ?? "").trim() || "Outros";
+    const list = byBrand.get(b) ?? [];
+    list.push(p);
+    byBrand.set(b, list);
+  }
+  const brands = Array.from(byBrand.keys()).sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
+  const visibleBrands =
+    selectedBrand && byBrand.has(selectedBrand) ? [selectedBrand] : brands;
+
+  // logos: por enquanto placeholder (sem texto). Depois podemos evoluir pra "brand_logo" no banco.
+  const brandLogos: Record<string, string> = {
+    nike: "/assets/iconsolid.png",
+    adidas: "/assets/iconsolid.png",
+    jordan: "/assets/iconsolid.png",
+    "new balance": "/assets/iconsolid.png",
+    asics: "/assets/iconsolid.png",
+    puma: "/assets/iconsolid.png",
+    vans: "/assets/iconsolid.png",
+    converse: "/assets/iconsolid.png",
+  };
+  const resolveBrandLogo = (brand: string) => {
+    const key = brand.trim().toLowerCase();
+    return brandLogos[key] || "/assets/iconsolid.png";
+  };
+
+  const headerTitle =
+    main === "sneakers"
+      ? "SNEAKERS"
+      : main === "vestuario"
+      ? "VESTUÁRIO"
+      : "CATÁLOGO SOLID CHOICE";
+
+  const renderProductCard = (p: Product) => {
+    const img = p.hero_image || "/assets/banner-facil.png";
+    const href = p.slug ? `/loja/${p.slug}` : "/loja";
+    return (
+      <div key={p.id} className="section-shell overflow-hidden rounded-2xl p-3">
+        <Link href={href} className="block">
+          <div className="relative h-40 w-full overflow-hidden rounded-xl bg-[#0c1428]">
+            <Image
+              src={img}
+              alt={p.name}
+              fill
+              sizes="(min-width: 1280px) 260px, (min-width: 768px) 50vw, 100vw"
+              className="object-cover"
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="line-clamp-1 text-sm font-semibold text-[#f2d3a8]">
+              {p.name}
+            </p>
+            <span className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
+              {priceLabel(p.price_cents)}
+            </span>
+          </div>
+        </Link>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Link
+            href={href}
+            className="cta-secondary flex items-center justify-center rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+          >
+            Ver detalhes
+          </Link>
+          <AddToCartButton
+            productId={p.id}
+            className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+          >
+            Adicionar
+          </AddToCartButton>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#0c1428] text-[#f2d3a8]">
@@ -61,7 +164,7 @@ export default async function LojaPage({
           <p className="badge inline-flex rounded-full px-3 py-2">
             SEMANA 02 · CATÁLOGO VISUAL
           </p>
-          <h1 className="mt-4 text-3xl sm:text-4xl">CATÁLOGO SOLID CHOICE</h1>
+          <h1 className="mt-4 text-3xl sm:text-4xl">{headerTitle}</h1>
           <p className="mt-3 max-w-4xl text-sm sm:text-base text-slate-200">
             Vitrine curada por categoria. O catálogo é aberto: qualquer peça pode
             ser buscada direto do mercado interno chinês. Peça no WhatsApp se não
@@ -89,6 +192,14 @@ export default async function LojaPage({
             >
               Minhas compras
             </Link>
+            {isMainSelected ? (
+              <Link
+                href="/loja"
+                className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+              >
+                Voltar (categorias)
+              </Link>
+            ) : null}
             <Link
               href="/"
               className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
@@ -97,19 +208,33 @@ export default async function LojaPage({
             </Link>
           </div>
 
-          {isFiltered ? (
+          {isMainSelected && (selectedCat || selectedBrand) ? (
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                Categoria:
-              </span>
-              <span className="badge rounded-full px-3 py-1 text-[11px]">
-                {selectedCat}
-              </span>
+              {selectedCat ? (
+                <>
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                    Categoria:
+                  </span>
+                  <span className="badge rounded-full px-3 py-1 text-[11px]">
+                    {selectedCat}
+                  </span>
+                </>
+              ) : null}
+              {selectedBrand ? (
+                <>
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                    Marca:
+                  </span>
+                  <span className="badge rounded-full px-3 py-1 text-[11px]">
+                    {selectedBrand}
+                  </span>
+                </>
+              ) : null}
               <Link
-                href="/loja"
+                href={`/loja?main=${encodeURIComponent(main!)}`}
                 className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
               >
-                Ver todas categorias
+                Ver todas
               </Link>
             </div>
           ) : null}
@@ -123,86 +248,175 @@ export default async function LojaPage({
 
         <div id="produtos" className="mt-10" />
 
-        {visibleCategories.length === 0 ? (
-          <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
-            {isFiltered
-              ? "Categoria não encontrada."
-              : "Nenhum produto cadastrado ainda."}
-          </div>
-        ) : (
-          <div className="mt-6 space-y-10">
-            {visibleCategories.map((cat) => {
-              const all = byCategory.get(cat) ?? [];
-              const products = isFiltered ? all : all.slice(0, 5);
-              const canShowMore = !isFiltered && all.length > 5;
-              return (
-                <section key={cat} className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
-                      {cat}
-                    </h2>
-                    {canShowMore ? (
-                      <Link
-                        href={`/loja?cat=${encodeURIComponent(cat)}`}
-                        className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-                      >
-                        Ver mais
-                      </Link>
-                    ) : null}
-                  </div>
+        {/* Entrada: 2 categorias principais */}
+        {!isMainSelected ? (
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <Link
+              href="/loja?main=sneakers"
+              className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
+            >
+              <div className="absolute inset-0 opacity-30">
+                <Image src="/assets/banner-facil.png" alt="Sneakers" fill className="object-cover" />
+              </div>
+              <div className="relative">
+                <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
+                  Categoria principal
+                </p>
+                <h2 className="mt-4 text-4xl text-[#f2d3a8]">SNEAKERS</h2>
+                <p className="mt-2 max-w-md text-sm text-slate-200">
+                  Explore por marca e monte sua cotação.
+                </p>
+                <div className="mt-6 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200">
+                  Entrar
+                </div>
+              </div>
+            </Link>
 
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {products.map((p) => {
-                      const img = p.hero_image || "/assets/banner-facil.png";
-                      const href = p.slug ? `/loja/${p.slug}` : "/loja";
-                      return (
-                        <div
-                          key={p.id}
-                          className="section-shell overflow-hidden rounded-2xl p-3"
-                        >
-                          <Link href={href} className="block">
-                            <div className="relative h-40 w-full overflow-hidden rounded-xl bg-[#0c1428]">
-                              <Image
-                                src={img}
-                                alt={p.name}
-                                fill
-                                sizes="(min-width: 1280px) 260px, (min-width: 768px) 50vw, 100vw"
-                                className="object-cover"
-                              />
-                            </div>
-                            <div className="mt-3 flex items-center justify-between gap-3">
-                              <p className="line-clamp-1 text-sm font-semibold text-[#f2d3a8]">
-                                {p.name}
-                              </p>
-                              <span className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
-                                {priceLabel(p.price_cents)}
-                              </span>
-                            </div>
+            <Link
+              href="/loja?main=vestuario"
+              className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
+            >
+              <div className="absolute inset-0 opacity-30">
+                <Image src="/assets/banner-whats.png" alt="Vestuário" fill className="object-cover" />
+              </div>
+              <div className="relative">
+                <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
+                  Categoria principal
+                </p>
+                <h2 className="mt-4 text-4xl text-[#f2d3a8]">VESTUÁRIO</h2>
+                <p className="mt-2 max-w-md text-sm text-slate-200">
+                  Bermuda, camisa, calça e mais.
+                </p>
+                <div className="mt-6 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200">
+                  Entrar
+                </div>
+              </div>
+            </Link>
+          </div>
+        ) : null}
+
+        {/* Sneakers: marcas com botões de logo */}
+        {main === "sneakers" ? (
+          <>
+            <div className="mt-8 section-shell rounded-3xl p-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                    Subcategorias
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-[#f2d3a8]">Marcas</h2>
+                </div>
+                {selectedBrand ? (
+                  <Link
+                    href="/loja?main=sneakers"
+                    className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                  >
+                    Ver todas marcas
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="mt-5 grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
+                {brands.map((b) => {
+                  const active = selectedBrand === b;
+                  return (
+                    <Link
+                      key={b}
+                      href={`/loja?main=sneakers&brand=${encodeURIComponent(b)}`}
+                      className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border bg-black/20 transition ${
+                        active
+                          ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
+                          : "border-white/10 hover:border-white/20"
+                      }`}
+                      aria-label={b}
+                      title={b}
+                    >
+                      <Image src={resolveBrandLogo(b)} alt={b} width={44} height={44} className="opacity-90" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            {visibleBrands.length === 0 ? (
+              <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
+                Nenhum sneaker cadastrado ainda.
+              </div>
+            ) : (
+              <div className="mt-8 space-y-10">
+                {visibleBrands.map((b) => {
+                  const all = byBrand.get(b) ?? [];
+                  const products = selectedBrand ? all : all.slice(0, 5);
+                  const canShowMore = !selectedBrand && all.length > 5;
+                  return (
+                    <section key={b} className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
+                          {b}
+                        </h2>
+                        {canShowMore ? (
+                          <Link
+                            href={`/loja?main=sneakers&brand=${encodeURIComponent(b)}`}
+                            className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                          >
+                            Ver mais
                           </Link>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {products.map(renderProductCard)}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : null}
 
-                          <div className="mt-3 grid grid-cols-2 gap-2">
-                            <Link
-                              href={href}
-                              className="cta-secondary flex items-center justify-center rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                            >
-                              Ver detalhes
-                            </Link>
-                            <AddToCartButton
-                              productId={p.id}
-                              className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                            >
-                              Adicionar
-                            </AddToCartButton>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
+        {/* Vestuário: subcategorias como hoje */}
+        {main === "vestuario" ? (
+          visibleClothingCategories.length === 0 ? (
+            <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
+              {selectedCat ? "Categoria não encontrada." : "Nenhum vestuário cadastrado ainda."}
+            </div>
+          ) : (
+            <div className="mt-8 space-y-10">
+              {visibleClothingCategories.map((cat) => {
+                const all = clothingByCategory.get(cat) ?? [];
+                const products = selectedCat ? all : all.slice(0, 5);
+                const canShowMore = !selectedCat && all.length > 5;
+                return (
+                  <section key={cat} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
+                        {cat}
+                      </h2>
+                      {canShowMore ? (
+                        <Link
+                          href={`/loja?main=vestuario&cat=${encodeURIComponent(cat)}`}
+                          className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                        >
+                          Ver mais
+                        </Link>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      {products.map(renderProductCard)}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )
+        ) : null}
+
+        {/* Vazio geral quando não há produtos */}
+        {!isMainSelected && items.length === 0 ? (
+          <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
+            Nenhum produto cadastrado ainda.
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
