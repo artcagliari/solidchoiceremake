@@ -152,6 +152,23 @@ export default async function LojaPage({
       .filter((n) => n.parent_id === parentId && (!kind || n.kind === kind))
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
+  const hrefMain = (m: "sneakers" | "vestuario") => `/loja?main=${encodeURIComponent(m)}`;
+  const hrefSneakersBrand = (brandSlug: string) => {
+    if (selectedBrand === brandSlug) return hrefMain("sneakers");
+    return `/loja?main=sneakers&brand=${encodeURIComponent(brandSlug)}`;
+  };
+  const hrefSneakersLine = (lineSlug: string) => {
+    if (!selectedBrand) return hrefMain("sneakers");
+    if (selectedLine === lineSlug) {
+      return `/loja?main=sneakers&brand=${encodeURIComponent(selectedBrand)}`;
+    }
+    return `/loja?main=sneakers&brand=${encodeURIComponent(selectedBrand)}&line=${encodeURIComponent(lineSlug)}`;
+  };
+  const hrefVestSub = (subSlug: string) => {
+    if (selectedCat === subSlug) return hrefMain("vestuario");
+    return `/loja?main=vestuario&cat=${encodeURIComponent(subSlug)}`;
+  };
+
   const renderProductCard = (p: Product) => {
     const img = p.hero_image || "/assets/banner-facil.png";
     const href = p.slug ? `/loja/${p.slug}` : "/loja";
@@ -296,6 +313,192 @@ export default async function LojaPage({
         ) : null}
 
         <div id="produtos" className="mt-10" />
+
+        {/* Filtros (estilo loja grande) */}
+        {isMainSelected ? (
+          <section className="mt-8 section-shell rounded-3xl p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                  Filtros
+                </p>
+                <h2 className="mt-2 text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  {main === "sneakers" ? "Marcas e linhas" : "Categorias"}
+                </h2>
+              </div>
+              <Link
+                href={hrefMain(main!)}
+                className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+              >
+                Limpar filtros
+              </Link>
+            </div>
+
+            {main === "sneakers" ? (
+              hasCatalog ? (
+                (() => {
+                  const mainNode = findBySlug("main", "sneakers");
+                  const brandNodes = mainNode ? childrenOf(mainNode.id, "brand") : [];
+                  const brandNode = selectedBrand ? findBySlug("brand", selectedBrand) : null;
+                  const lineNodes = brandNode ? childrenOf(brandNode.id, "line") : [];
+                  return (
+                    <div className="mt-5 grid gap-6">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                          Marca
+                        </p>
+                        <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
+                          {brandNodes.map((b) => {
+                            const active = selectedBrand === b.slug;
+                            const logo = b.logo_url || "/assets/iconsolid.png";
+                            return (
+                              <Link
+                                key={b.id}
+                                href={hrefSneakersBrand(b.slug)}
+                                className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border bg-black/20 transition ${
+                                  active
+                                    ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
+                                    : "border-white/10 hover:border-white/20"
+                                }`}
+                                aria-label={b.label}
+                                title={b.label}
+                              >
+                                <Image
+                                  src={logo}
+                                  alt={b.label}
+                                  width={44}
+                                  height={44}
+                                  className="opacity-90"
+                                />
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                          Linha
+                        </p>
+                        {!brandNode ? (
+                          <p className="mt-2 text-sm text-slate-200">
+                            Selecione uma marca para ver as linhas.
+                          </p>
+                        ) : lineNodes.length === 0 ? (
+                          <p className="mt-2 text-sm text-slate-200">
+                            Nenhuma linha cadastrada para {brandNode.label}.
+                          </p>
+                        ) : (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {lineNodes.map((l) => {
+                              const active = selectedLine === l.slug;
+                              return (
+                                <Link
+                                  key={l.id}
+                                  href={hrefSneakersLine(l.slug)}
+                                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
+                                    active ? "cta" : "cta-secondary"
+                                  }`}
+                                >
+                                  {l.label}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="mt-5">
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                    Marca
+                  </p>
+                  <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
+                    {brands.map((b) => {
+                      const active = selectedBrand === b;
+                      return (
+                        <Link
+                          key={b}
+                          href={selectedBrand === b ? hrefMain("sneakers") : `/loja?main=sneakers&brand=${encodeURIComponent(b)}`}
+                          className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border bg-black/20 transition ${
+                            active
+                              ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
+                              : "border-white/10 hover:border-white/20"
+                          }`}
+                          aria-label={b}
+                          title={b}
+                        >
+                          <Image
+                            src={resolveBrandLogo(b)}
+                            alt={b}
+                            width={44}
+                            height={44}
+                            className="opacity-90"
+                          />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            ) : (
+              hasCatalog ? (
+                (() => {
+                  const mainNode = findBySlug("main", "vestuario");
+                  const subNodes = mainNode ? childrenOf(mainNode.id, "subcategory") : [];
+                  return (
+                    <div className="mt-5">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                        Subcategorias
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {subNodes.map((s) => {
+                          const active = selectedCat === s.slug;
+                          return (
+                            <Link
+                              key={s.id}
+                              href={hrefVestSub(s.slug)}
+                              className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
+                                active ? "cta" : "cta-secondary"
+                              }`}
+                            >
+                              {s.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="mt-5">
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                    Categorias
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {clothingCategories.map((c) => {
+                      const active = selectedCat === c;
+                      const href = active ? hrefMain("vestuario") : `/loja?main=vestuario&cat=${encodeURIComponent(c)}`;
+                      return (
+                        <Link
+                          key={c}
+                          href={href}
+                          className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
+                            active ? "cta" : "cta-secondary"
+                          }`}
+                        >
+                          {c}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            )}
+          </section>
+        ) : null}
 
         {/* Entrada: 2 categorias principais */}
         {!isMainSelected ? (
