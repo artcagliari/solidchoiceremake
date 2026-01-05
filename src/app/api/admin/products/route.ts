@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabaseAdmin
     .from("products")
     .select(
-      "id,name,slug,category,price_cents,brand,badge,description,hero_image,images,sizes,colors,created_at"
+      "id,name,slug,category,price_cents,brand,badge,description,hero_image,images,sizes,colors,catalog_node_id,created_at"
     )
     .order("created_at", { ascending: false });
 
@@ -52,6 +52,10 @@ export async function POST(req: Request) {
     const name = String(body.name ?? "").trim();
     const category = String(body.category ?? "").trim() || "Outros";
     const brand = String(body.brand ?? "").trim() || "Solid Choice";
+    const catalog_node_id =
+      typeof body.catalog_node_id === "string" && body.catalog_node_id.trim()
+        ? body.catalog_node_id.trim()
+        : null;
     const description = String(body.description ?? "").trim() || null;
     const badge = String(body.badge ?? "").trim() || category;
 
@@ -86,6 +90,7 @@ export async function POST(req: Request) {
         images,
         sizes,
         colors,
+        catalog_node_id,
       })
       .select("id")
       .single();
@@ -121,6 +126,8 @@ export async function PUT(req: Request) {
 
     const hero_image =
       typeof body.hero_image === "string" ? body.hero_image.trim() || null : undefined;
+    const catalog_node_id =
+      typeof body.catalog_node_id === "string" ? body.catalog_node_id.trim() || null : undefined;
 
     const images = body.images !== undefined ? toArray(body.images) : undefined;
     const sizes = body.sizes !== undefined ? toArray(body.sizes) : undefined;
@@ -140,6 +147,7 @@ export async function PUT(req: Request) {
     if (images !== undefined) patch.images = images;
     if (sizes !== undefined) patch.sizes = sizes;
     if (colors !== undefined) patch.colors = colors;
+    if (catalog_node_id !== undefined) patch.catalog_node_id = catalog_node_id;
 
     if (new_slug !== undefined) {
       patch.slug = new_slug || (name ? slugify(name) : undefined);

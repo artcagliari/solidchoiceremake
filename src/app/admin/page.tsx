@@ -17,6 +17,7 @@ type Product = {
   slug?: string | null;
   category?: string | null;
   brand?: string | null;
+  catalog_node_id?: string | null;
   badge?: string | null;
   description?: string | null;
   price_cents?: number | null;
@@ -24,6 +25,16 @@ type Product = {
   images?: string[] | null;
   sizes?: string[] | null;
   colors?: string[] | null;
+};
+
+type CatalogNode = {
+  id: string;
+  kind: "main" | "subcategory" | "brand" | "line";
+  parent_id: string | null;
+  label: string;
+  slug: string;
+  logo_url: string | null;
+  sort_order: number;
 };
 
 type Order = {
@@ -101,6 +112,7 @@ export default function AdminPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [catalog, setCatalog] = useState<CatalogNode[]>([]);
 
   const [editing, setEditing] = useState<Product | null>(null);
 
@@ -118,6 +130,20 @@ export default function AdminPage() {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [heroUrl, setHeroUrl] = useState<string>("");
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
+
+  // Product catalog selection (new taxonomy)
+  const [catalogMain, setCatalogMain] = useState<"sneakers" | "vestuario">("vestuario");
+  const [catalogBrandId, setCatalogBrandId] = useState<string>("");
+  const [catalogLineId, setCatalogLineId] = useState<string>("");
+  const [catalogVestSubId, setCatalogVestSubId] = useState<string>("");
+
+  // Catalog node creation
+  const [catKind, setCatKind] = useState<"subcategory" | "brand" | "line">("subcategory");
+  const [catParentId, setCatParentId] = useState<string>("");
+  const [catLabel, setCatLabel] = useState("");
+  const [catSlug, setCatSlug] = useState("");
+  const [catLogoUrl, setCatLogoUrl] = useState("");
+  const [catSort, setCatSort] = useState<number>(10);
 
   const totals = useMemo(() => {
     const sum = (status: string) =>
@@ -203,6 +229,53 @@ export default function AdminPage() {
     setOrders(Array.isArray(oJson.items) ? oJson.items : []);
   };
 
+  const loadCatalog = async (t: string) => {
+    try {
+      const res = await fetch("/api/admin/catalog", {
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const json = (await res.json()) as { items?: CatalogNode[] };
+      setCatalog(Array.isArray(json.items) ? json.items : []);
+    } catch {
+      // Se tabela não existir ainda no Supabase, não quebra o admin.
+      setCatalog([]);
+    }
+  };
+
+  const createCatalogNode = async () => {
+    if (!token) return;
+    setNotice(null);
+    setError(null);
+    try {
+      const payload = {
+        kind: catKind,
+        parent_id: catParentId || null,
+        label: catLabel.trim(),
+        slug: (catSlug.trim() || slugify(catLabel)).trim(),
+        logo_url: catLogoUrl.trim() || null,
+        sort_order: catSort,
+      };
+      const res = await fetch("/api/admin/catalog", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setNotice("Categoria criada.");
+      setCatLabel("");
+      setCatSlug("");
+      setCatLogoUrl("");
+      await loadCatalog(token);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao criar categoria.";
+      setError(msg);
+    }
+  };
+
   const loadLanding = async (t: string) => {
     setLandingLoading(true);
     setLandingMsg(null);
@@ -270,6 +343,7 @@ export default function AdminPage() {
       setToken(t);
       try {
         await fetchAll(t);
+        await loadCatalog(t);
         await loadLanding(t);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro carregando admin.";
@@ -314,6 +388,17 @@ export default function AdminPage() {
     setGalleryUrls(p.images ?? []);
     setHeroFile(null);
     setGalleryFiles([]);
+
+    // Novo catálogo: tenta inferir seleção ao editar
+    if (p.catalog_node_id) {
+      // Se existir, vamos preencher direto no payload; o UI deixa ajustar se quiser.
+      // (A estrutura do catálogo é carregada no init)
+      setCatalogLineId(p.catalog_node_id);
+      setCatalogVestSubId(p.catalog_node_id);
+    } else {
+      setCatalogLineId("");
+      setCatalogVestSubId("");
+    }
   };
 
   const uploadFile = async (file: File, folder: string) => {
@@ -360,6 +445,11 @@ export default function AdminPage() {
         images: finalGallery,
         sizes,
         colors,
+        // novo catálogo (opcional)
+        catalog_node_id:
+          catalogMain === "sneakers"
+            ? (catalogLineId || null)
+            : (catalogVestSubId || null),
         // manter compatibilidade com backend antigo:
         slug: editing?.slug ?? slugify(name.trim()),
         new_slug: slugify(name.trim()),
@@ -545,6 +635,101 @@ export default function AdminPage() {
                   placeholder="0,00"
                 />
               </label>
+
+              <div className="sm:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                  Catálogo (novo)
+                </p>
+                <p className="mt-2 text-xs text-slate-300">
+                  Para Sneakers: selecione Marca + Linha. Para Vestuário: selecione a Subcategoria.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Principal</span>
+                    <select
+                      value={catalogMain}
+                      onChange={(e) => setCatalogMain(e.target.value as "sneakers" | "vestuario")}
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    >
+                      <option value="sneakers">Sneakers</option>
+                      <option value="vestuario">Vestuário</option>
+                    </select>
+                  </label>
+
+                  {catalogMain === "vestuario" ? (
+                    <label className="block">
+                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Subcategoria (Vestuário)</span>
+                      <select
+                        value={catalogVestSubId}
+                        onChange={(e) => setCatalogVestSubId(e.target.value)}
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      >
+                        <option value="">(sem)</option>
+                        {catalog
+                          .filter((n) => n.kind === "main" && n.slug === "vestuario")
+                          .flatMap((mainNode) =>
+                            catalog
+                              .filter((n) => n.parent_id === mainNode.id && n.kind === "subcategory")
+                              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                          )
+                          .map((n) => (
+                            <option key={n.id} value={n.id}>
+                              {n.label}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <>
+                      <label className="block">
+                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Marca (Sneakers)</span>
+                        <select
+                          value={catalogBrandId}
+                          onChange={(e) => {
+                            setCatalogBrandId(e.target.value);
+                            setCatalogLineId("");
+                          }}
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        >
+                          <option value="">(sem)</option>
+                          {catalog
+                            .filter((n) => n.kind === "main" && n.slug === "sneakers")
+                            .flatMap((mainNode) =>
+                              catalog
+                                .filter((n) => n.parent_id === mainNode.id && n.kind === "brand")
+                                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                            )
+                            .map((n) => (
+                              <option key={n.id} value={n.id}>
+                                {n.label}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Linha (ex.: Air Force)</span>
+                        <select
+                          value={catalogLineId}
+                          onChange={(e) => setCatalogLineId(e.target.value)}
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          disabled={!catalogBrandId}
+                        >
+                          <option value="">(sem)</option>
+                          {catalog
+                            .filter((n) => n.parent_id === catalogBrandId && n.kind === "line")
+                            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                            .map((n) => (
+                              <option key={n.id} value={n.id}>
+                                {n.label}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
 
               <label className="block">
                 <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
@@ -917,6 +1102,190 @@ export default function AdminPage() {
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        {/* Catálogo: categorias/subcategorias/linhas */}
+        <section className="mt-10 section-shell rounded-3xl p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
+                Catálogo · Categorias
+              </h2>
+              <p className="mt-2 text-sm text-slate-200">
+                Crie subcategorias do Vestuário, Marcas e Linhas de Sneakers (ex.: Nike → Air Force).
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Pré-requisito: rode <span className="text-slate-200">supabase_catalog_nodes.sql</span> no Supabase.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => token && loadCatalog(token)}
+              className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+              disabled={!token}
+            >
+              Atualizar
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                Criar item
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Tipo</span>
+                  <select
+                    value={catKind}
+                    onChange={(e) => setCatKind(e.target.value as typeof catKind)}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                  >
+                    <option value="subcategory">Subcategoria (Vestuário)</option>
+                    <option value="brand">Marca (Sneakers)</option>
+                    <option value="line">Linha (Sneakers)</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Ordem</span>
+                  <input
+                    type="number"
+                    value={catSort}
+                    onChange={(e) => setCatSort(Number(e.target.value))}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                  />
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Pai</span>
+                  <select
+                    value={catParentId}
+                    onChange={(e) => setCatParentId(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                  >
+                    <option value="">(selecione)</option>
+                    {/* Vestuário (main) */}
+                    {catalog
+                      .filter((n) => n.kind === "main" && n.slug === "vestuario")
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>
+                          Vestuário (pai de subcategorias)
+                        </option>
+                      ))}
+                    {/* Sneakers (main) */}
+                    {catalog
+                      .filter((n) => n.kind === "main" && n.slug === "sneakers")
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>
+                          Sneakers (pai de marcas)
+                        </option>
+                      ))}
+                    {/* Marcas (pai de linhas) */}
+                    {catalog
+                      .filter((n) => n.kind === "brand")
+                      .map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.label} (pai de linhas)
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Nome</span>
+                  <input
+                    value={catLabel}
+                    onChange={(e) => {
+                      setCatLabel(e.target.value);
+                      if (!catSlug.trim()) setCatSlug(slugify(e.target.value));
+                    }}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    placeholder="Ex.: Nike / Air Force / Bermuda"
+                  />
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Slug</span>
+                  <input
+                    value={catSlug}
+                    onChange={(e) => setCatSlug(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    placeholder="Ex.: nike / air-force / bermuda"
+                  />
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                    Logo URL (somente para marca)
+                  </span>
+                  <input
+                    value={catLogoUrl}
+                    onChange={(e) => setCatLogoUrl(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    placeholder="https://... (ou deixe vazio)"
+                  />
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={createCatalogNode}
+                className="mt-4 cta rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+                disabled={!token}
+              >
+                Criar
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                Estrutura atual
+              </p>
+              {catalog.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-200">
+                  Nenhum item encontrado (ou a tabela ainda não existe).
+                </p>
+              ) : (
+                <div className="mt-4 grid gap-2 text-sm text-slate-200">
+                  {catalog
+                    .filter((n) => n.kind === "main")
+                    .sort((a, b) => a.sort_order - b.sort_order)
+                    .map((m) => (
+                      <div key={m.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                          {m.label} ({m.slug})
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {catalog
+                            .filter((n) => n.parent_id === m.id)
+                            .sort((a, b) => a.sort_order - b.sort_order)
+                            .map((c) => (
+                              <div key={c.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span>
+                                    {c.label} <span className="text-slate-400">({c.kind})</span>
+                                  </span>
+                                  <span className="text-xs text-slate-400">{c.slug}</span>
+                                </div>
+                                {c.kind === "brand" ? (
+                                  <div className="mt-2 text-xs text-slate-400">
+                                    Linhas:{" "}
+                                    {catalog
+                                      .filter((n) => n.parent_id === c.id && n.kind === "line")
+                                      .map((l) => l.label)
+                                      .join(", ") || "—"}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
