@@ -255,10 +255,10 @@ export default async function LojaPage({
               href="/loja?main=sneakers"
               className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
             >
-              <div className="absolute inset-0 opacity-30">
+              <div className="pointer-events-none absolute inset-0 opacity-30">
                 <Image src="/assets/banner-facil.png" alt="Sneakers" fill className="object-cover" />
               </div>
-              <div className="relative">
+              <div className="relative z-10">
                 <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
                   Categoria principal
                 </p>
@@ -276,10 +276,10 @@ export default async function LojaPage({
               href="/loja?main=vestuario"
               className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
             >
-              <div className="absolute inset-0 opacity-30">
+              <div className="pointer-events-none absolute inset-0 opacity-30">
                 <Image src="/assets/banner-whats.png" alt="Vestuário" fill className="object-cover" />
               </div>
-              <div className="relative">
+              <div className="relative z-10">
                 <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
                   Categoria principal
                 </p>
