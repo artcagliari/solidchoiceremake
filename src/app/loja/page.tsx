@@ -24,8 +24,9 @@ function priceLabel(price_cents: number | null) {
 export default async function LojaPage({
   searchParams,
 }: {
-  searchParams?: { cat?: string; main?: string; brand?: string };
+  searchParams?: Promise<{ cat?: string; main?: string; brand?: string }>;
 }) {
+  const sp = searchParams ? await searchParams : undefined;
   const { data, error } = await supabaseAdmin
     .from("products")
     .select("id,name,slug,category,brand,price_cents,hero_image,created_at")
@@ -33,16 +34,16 @@ export default async function LojaPage({
 
   const items = (data ?? []) as unknown as Product[];
 
-  const mainRaw = typeof searchParams?.main === "string" ? searchParams.main : null;
+  const mainRaw = typeof sp?.main === "string" ? sp.main : null;
   const main = mainRaw ? mainRaw.trim().toLowerCase() : null; // sneakers | vestuario
   const isMainSelected = main === "sneakers" || main === "vestuario";
 
   const selectedCatRaw =
-    typeof searchParams?.cat === "string" ? searchParams.cat : null;
+    typeof sp?.cat === "string" ? sp.cat : null;
   const selectedCat = selectedCatRaw ? selectedCatRaw.trim() : null;
 
   const selectedBrandRaw =
-    typeof searchParams?.brand === "string" ? searchParams.brand : null;
+    typeof sp?.brand === "string" ? sp.brand : null;
   const selectedBrand = selectedBrandRaw ? selectedBrandRaw.trim() : null;
 
   const isFootwearCategory = (cat: string) => {
@@ -250,13 +251,19 @@ export default async function LojaPage({
 
         {/* Entrada: 2 categorias principais */}
         {!isMainSelected ? (
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <div className="mt-8 grid gap-6">
             <Link
               href="/loja?main=sneakers"
               className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
             >
               <div className="pointer-events-none absolute inset-0 opacity-30">
-                <Image src="/assets/banner-facil.png" alt="Sneakers" fill className="object-cover" />
+                <Image
+                  src="/assets/banner-facil.png"
+                  alt="Sneakers"
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                />
               </div>
               <div className="relative z-10">
                 <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
@@ -277,7 +284,13 @@ export default async function LojaPage({
               className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
             >
               <div className="pointer-events-none absolute inset-0 opacity-30">
-                <Image src="/assets/banner-whats.png" alt="Vestuário" fill className="object-cover" />
+                <Image
+                  src="/assets/banner-whats.png"
+                  alt="Vestuário"
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                />
               </div>
               <div className="relative z-10">
                 <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
