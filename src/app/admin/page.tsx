@@ -217,14 +217,10 @@ export default function AdminPage() {
   };
 
   const defaultSizesByCategory = useMemo(() => {
-    const cat = category.toLowerCase();
-    const isFootwear =
-      cat.includes("cal") || cat.includes("tenis") || cat.includes("tênis");
-
-    // Regra: Calçado = numérico; qualquer outra categoria = roupa (S..XXL)
-    if (isFootwear) return "36,37,38,39,40,41,42,43,44";
+    // Regra: Sneakers/Calçado = numérico; qualquer outro = roupa (S..XXL)
+    if (catalogMain === "sneakers") return "36,37,38,39,40,41,42,43,44";
     return "S,M,L,XL,XXL";
-  }, [category]);
+  }, [catalogMain]);
 
   const dynamicSizesHint = useMemo(() => {
     return defaultSizesByCategory
@@ -237,7 +233,7 @@ export default function AdminPage() {
     if (!sizesTouched && defaultSizesByCategory) {
       setSizes(defaultSizesByCategory);
     }
-  }, [category, defaultSizesByCategory, sizesTouched]);
+  }, [catalogMain, defaultSizesByCategory, sizesTouched]);
 
   const fetchAll = async (t: string) => {
     const [pRes, oRes] = await Promise.all([
@@ -488,7 +484,6 @@ export default function AdminPage() {
   const startEdit = (p: Product) => {
     setEditing(p);
     setName(p.name ?? "");
-    setCategory(p.category ?? "Calçado");
     setBrand(p.brand ?? "Solid Choice");
     setBadge(p.badge ?? "");
     setDescription(p.description ?? "");
@@ -501,12 +496,23 @@ export default function AdminPage() {
     setHeroFile(null);
     setGalleryFiles([]);
 
-    // Novo catálogo: tenta inferir seleção ao editar
-    if (p.catalog_node_id) {
-      // Se existir, vamos preencher direto no payload; o UI deixa ajustar se quiser.
-      // (A estrutura do catálogo é carregada no init)
-      setCatalogLineId(p.catalog_node_id);
-      setCatalogVestSubId(p.catalog_node_id);
+    // Novo catálogo: inferir seleção ao editar
+    if (p.catalog_node_id && catalog.length) {
+      const node = catalog.find((n) => n.id === p.catalog_node_id) ?? null;
+      if (node?.kind === "line") {
+        setCatalogMain("sneakers");
+        setCatalogLineId(node.id);
+        setCatalogBrandId(node.parent_id ?? "");
+        setCatalogVestSubId("");
+      } else if (node?.kind === "subcategory") {
+        setCatalogMain("vestuario");
+        setCatalogVestSubId(node.id);
+        setCatalogBrandId("");
+        setCatalogLineId("");
+      } else {
+        setCatalogLineId("");
+        setCatalogVestSubId("");
+      }
     } else {
       setCatalogLineId("");
       setCatalogVestSubId("");
@@ -532,7 +538,31 @@ export default function AdminPage() {
     setError(null);
     try {
       const price_cents = toCents(price);
-      const finalBadge = badge.trim() || category.trim() || "Produto";
+      const findNodeById = (id: string) => catalog.find((n) => n.id === id) ?? null;
+
+      // Categoria/Marca agora são derivadas do catálogo (novo)
+      let derivedCategory = "Vestuário";
+      let derivedBrand = "Solid Choice";
+      let derivedCatalogNodeId: string | null = null;
+
+      if (catalogMain === "sneakers") {
+        derivedCategory = "Calçado";
+        let bId = catalogBrandId;
+        if (!bId && catalogLineId) {
+          const lineNode = findNodeById(catalogLineId);
+          bId = lineNode?.parent_id ?? "";
+        }
+        const brandNode = bId ? findNodeById(bId) : null;
+        derivedBrand = brandNode?.label ?? "Solid Choice";
+        derivedCatalogNodeId = catalogLineId || null;
+      } else {
+        const subNode = catalogVestSubId ? findNodeById(catalogVestSubId) : null;
+        derivedCategory = subNode?.label ?? "Vestuário";
+        derivedBrand = "Solid Choice";
+        derivedCatalogNodeId = catalogVestSubId || null;
+      }
+
+      const finalBadge = badge.trim() || derivedCategory.trim() || "Produto";
 
       let finalHero = heroUrl.trim() || "";
       if (heroFile) finalHero = await uploadFile(heroFile, "hero");
@@ -548,8 +578,8 @@ export default function AdminPage() {
       const payload = {
         id: editing?.id,
         name: name.trim(),
-        category: category.trim(),
-        brand: brand.trim(),
+        category: derivedCategory,
+        brand: derivedBrand,
         badge: finalBadge,
         description: description.trim(),
         price_cents,
@@ -558,10 +588,7 @@ export default function AdminPage() {
         sizes,
         colors,
         // novo catálogo (opcional)
-        catalog_node_id:
-          catalogMain === "sneakers"
-            ? (catalogLineId || null)
-            : (catalogVestSubId || null),
+        catalog_node_id: derivedCatalogNodeId,
         // manter compatibilidade com backend antigo:
         slug: editing?.slug ?? slugify(name.trim()),
         new_slug: slugify(name.trim()),
@@ -718,23 +745,7 @@ export default function AdminPage() {
                 />
               </label>
 
-              <label className="block">
-                <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
-                  Categoria
-                </span>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 outline-none"
-                >
-                  <option>Calçado</option>
-                  <option>Camiseta</option>
-                  <option>Calça</option>
-                  <option>Bermuda</option>
-                  <option>Acessório</option>
-                  <option>Outros</option>
-                </select>
-              </label>
+              {/* Categoria antiga removida: agora vem do Catálogo (novo) */}
 
               <label className="block">
                 <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
@@ -843,17 +854,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <label className="block">
-                <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
-                  Marca
-                </span>
-                <input
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 outline-none"
-                  placeholder="Ex.: Nike"
-                />
-              </label>
+              {/* Marca antiga removida: Sneakers usa Marca do catálogo */}
 
               <label className="block">
                 <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
