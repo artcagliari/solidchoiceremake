@@ -34,6 +34,7 @@ type CatalogNode = {
   label: string;
   slug: string;
   logo_url: string | null;
+  banner_url?: string | null;
   sort_order: number;
 };
 
@@ -137,13 +138,37 @@ export default function AdminPage() {
   const [catalogLineId, setCatalogLineId] = useState<string>("");
   const [catalogVestSubId, setCatalogVestSubId] = useState<string>("");
 
-  // Catalog node creation
-  const [catKind, setCatKind] = useState<"main" | "subcategory" | "brand" | "line">("subcategory");
-  const [catParentId, setCatParentId] = useState<string>("");
-  const [catLabel, setCatLabel] = useState("");
-  const [catSlug, setCatSlug] = useState("");
-  const [catLogoUrl, setCatLogoUrl] = useState("");
-  const [catSort, setCatSort] = useState<number>(10);
+  // Catalog editing (simplificado por seções)
+  const [catalogBusy, setCatalogBusy] = useState(false);
+
+  // Principais (main)
+  const [mainSneakersBannerFile, setMainSneakersBannerFile] = useState<File | null>(null);
+  const [mainVestuarioBannerFile, setMainVestuarioBannerFile] = useState<File | null>(null);
+
+  // Vestuário: subcategoria
+  const [vestLabel, setVestLabel] = useState("");
+  const [vestSlug, setVestSlug] = useState("");
+  const [vestSort, setVestSort] = useState<number>(10);
+
+  // Sneakers: marca
+  const [brandLabel, setBrandLabel] = useState("");
+  const [brandSlug, setBrandSlug] = useState("");
+  const [brandSort, setBrandSort] = useState<number>(10);
+  const [brandLogoFile, setBrandLogoFile] = useState<File | null>(null);
+
+  // Sneakers: linha
+  const [lineBrandId, setLineBrandId] = useState<string>("");
+  const [lineLabel, setLineLabel] = useState("");
+  const [lineSlug, setLineSlug] = useState("");
+  const [lineSort, setLineSort] = useState<number>(10);
+
+  // Inline edit (por item)
+  const [editingCatalog, setEditingCatalog] = useState<CatalogNode | null>(null);
+  const [editCatalogLabel, setEditCatalogLabel] = useState("");
+  const [editCatalogSlug, setEditCatalogSlug] = useState("");
+  const [editCatalogSort, setEditCatalogSort] = useState<number>(10);
+  const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
+  const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
 
   const totals = useMemo(() => {
     const sum = (status: string) =>
@@ -243,19 +268,20 @@ export default function AdminPage() {
     }
   };
 
-  const createCatalogNode = async () => {
+  const createCatalogNode = async (payload: {
+    kind: "main" | "subcategory" | "brand" | "line";
+    parent_id: string | null;
+    label: string;
+    slug: string;
+    logo_url?: string | null;
+    banner_url?: string | null;
+    sort_order: number;
+  }) => {
     if (!token) return;
     setNotice(null);
     setError(null);
+    setCatalogBusy(true);
     try {
-      const payload = {
-        kind: catKind,
-        parent_id: catKind === "main" ? null : catParentId || null,
-        label: catLabel.trim(),
-        slug: (catSlug.trim() || slugify(catLabel)).trim(),
-        logo_url: catLogoUrl.trim() || null,
-        sort_order: catSort,
-      };
       const res = await fetch("/api/admin/catalog", {
         method: "POST",
         headers: {
@@ -265,15 +291,101 @@ export default function AdminPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      setNotice("Categoria criada.");
-      setCatLabel("");
-      setCatSlug("");
-      setCatLogoUrl("");
       await loadCatalog(token);
+      setNotice("Item do catálogo criado.");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao criar categoria.";
+      const msg = err instanceof Error ? err.message : "Erro ao criar item.";
       setError(msg);
+    } finally {
+      setCatalogBusy(false);
     }
+  };
+
+  const updateCatalogNode = async (
+    id: string,
+    patch: Partial<Pick<CatalogNode, "label" | "slug" | "sort_order" | "logo_url" | "banner_url">>
+  ) => {
+    if (!token) return;
+    setNotice(null);
+    setError(null);
+    setCatalogBusy(true);
+    try {
+      const res = await fetch("/api/admin/catalog", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id, patch }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await loadCatalog(token);
+      setNotice("Catálogo atualizado.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao atualizar catálogo.";
+      setError(msg);
+    } finally {
+      setCatalogBusy(false);
+    }
+  };
+
+  const deleteCatalogNode = async (id: string) => {
+    if (!token) return;
+    if (!confirm("Remover este item do catálogo? (sub-itens serão removidos também)")) return;
+    setNotice(null);
+    setError(null);
+    setCatalogBusy(true);
+    try {
+      const res = await fetch("/api/admin/catalog", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await loadCatalog(token);
+      setNotice("Item removido.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao remover item.";
+      setError(msg);
+    } finally {
+      setCatalogBusy(false);
+    }
+  };
+
+  const startEditCatalog = (node: CatalogNode) => {
+    setEditingCatalog(node);
+    setEditCatalogLabel(node.label);
+    setEditCatalogSlug(node.slug);
+    setEditCatalogSort(node.sort_order ?? 0);
+    setEditLogoFile(null);
+    setEditBannerFile(null);
+  };
+
+  const saveEditCatalog = async () => {
+    if (!editingCatalog) return;
+    let logo_url: string | null | undefined = undefined;
+    let banner_url: string | null | undefined = undefined;
+
+    try {
+      if (editLogoFile) logo_url = await uploadFile(editLogoFile, "catalog/brand-logos");
+      if (editBannerFile) banner_url = await uploadFile(editBannerFile, "catalog/banners");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao fazer upload.";
+      setError(msg);
+      return;
+    }
+
+    await updateCatalogNode(editingCatalog.id, {
+      label: editCatalogLabel.trim(),
+      slug: editCatalogSlug.trim(),
+      sort_order: editCatalogSort,
+      ...(logo_url !== undefined ? { logo_url } : {}),
+      ...(banner_url !== undefined ? { banner_url } : {}),
+    });
+    setEditingCatalog(null);
   };
 
   const loadLanding = async (t: string) => {
@@ -1105,190 +1217,502 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Catálogo: categorias/subcategorias/linhas */}
+        {/* Catálogo: simples (upload + seções separadas) */}
         <section className="mt-10 section-shell rounded-3xl p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
-                Catálogo · Categorias
+                Catálogo · Categorias / Marcas / Linhas
               </h2>
               <p className="mt-2 text-sm text-slate-200">
-                Crie subcategorias do Vestuário, Marcas e Linhas de Sneakers (ex.: Nike → Air Force).
+                Aqui é tudo por <b>upload</b> (galeria), sem URL.
               </p>
               <p className="mt-1 text-xs text-slate-400">
-                Pré-requisito: rode <span className="text-slate-200">supabase_catalog_nodes.sql</span> no Supabase.
+                Pré-requisito: rode <span className="text-slate-200">supabase_catalog_nodes.sql</span> no Supabase (inclui <span className="text-slate-200">banner_url</span>).
               </p>
             </div>
             <button
               type="button"
               onClick={() => token && loadCatalog(token)}
-              className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-              disabled={!token}
+              className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+              disabled={!token || catalogBusy}
             >
               Atualizar
             </button>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
-                Criar item
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Tipo</span>
-                  <select
-                    value={catKind}
-                    onChange={(e) => setCatKind(e.target.value as typeof catKind)}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                  >
-                    <option value="main">Categoria principal (main)</option>
-                    <option value="subcategory">Subcategoria (Vestuário)</option>
-                    <option value="brand">Marca (Sneakers)</option>
-                    <option value="line">Linha (Sneakers)</option>
-                  </select>
-                </label>
+          {(() => {
+            const mainSneakers = catalog.find((n) => n.kind === "main" && n.slug === "sneakers") ?? null;
+            const mainVestuario = catalog.find((n) => n.kind === "main" && n.slug === "vestuario") ?? null;
+            const brands = mainSneakers ? catalog.filter((n) => n.kind === "brand" && n.parent_id === mainSneakers.id).sort((a,b)=>a.sort_order-b.sort_order) : [];
+            const vestSubs = mainVestuario ? catalog.filter((n) => n.kind === "subcategory" && n.parent_id === mainVestuario.id).sort((a,b)=>a.sort_order-b.sort_order) : [];
 
-                <label className="block">
-                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Ordem</span>
-                  <input
-                    type="number"
-                    value={catSort}
-                    onChange={(e) => setCatSort(Number(e.target.value))}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                  />
-                </label>
+            return (
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                {/* Principais */}
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                    Categorias principais (banners)
+                  </p>
+                  <div className="mt-4 grid gap-4">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-slate-200">Sneakers</p>
+                        {mainSneakers?.banner_url ? (
+                          <a
+                            href={mainSneakers.banner_url}
+                            target="_blank"
+                            className="text-xs text-slate-300 underline"
+                          >
+                            ver imagem
+                          </a>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setMainSneakersBannerFile(e.target.files?.[0] ?? null)}
+                          className="block w-full text-xs text-slate-200"
+                        />
+                        <button
+                          type="button"
+                          className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                          disabled={!token || !mainSneakers || !mainSneakersBannerFile || catalogBusy}
+                          onClick={async () => {
+                            if (!token || !mainSneakers || !mainSneakersBannerFile) return;
+                            const url = await uploadFile(mainSneakersBannerFile, "catalog/banners");
+                            await updateCatalogNode(mainSneakers.id, { banner_url: url });
+                            setMainSneakersBannerFile(null);
+                          }}
+                        >
+                          Salvar banner
+                        </button>
+                      </div>
+                    </div>
 
-                <label className="block sm:col-span-2">
-                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Pai</span>
-                  <select
-                    value={catParentId}
-                    onChange={(e) => setCatParentId(e.target.value)}
-                    disabled={catKind === "main"}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                  >
-                    <option value="">(selecione)</option>
-                    {/* Vestuário (main) */}
-                    {catalog
-                      .filter((n) => n.kind === "main" && n.slug === "vestuario")
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>
-                          Vestuário (pai de subcategorias)
-                        </option>
-                      ))}
-                    {/* Sneakers (main) */}
-                    {catalog
-                      .filter((n) => n.kind === "main" && n.slug === "sneakers")
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>
-                          Sneakers (pai de marcas)
-                        </option>
-                      ))}
-                    {/* Marcas (pai de linhas) */}
-                    {catalog
-                      .filter((n) => n.kind === "brand")
-                      .map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.label} (pai de linhas)
-                        </option>
-                      ))}
-                  </select>
-                </label>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-slate-200">Vestuário</p>
+                        {mainVestuario?.banner_url ? (
+                          <a
+                            href={mainVestuario.banner_url}
+                            target="_blank"
+                            className="text-xs text-slate-300 underline"
+                          >
+                            ver imagem
+                          </a>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setMainVestuarioBannerFile(e.target.files?.[0] ?? null)}
+                          className="block w-full text-xs text-slate-200"
+                        />
+                        <button
+                          type="button"
+                          className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                          disabled={!token || !mainVestuario || !mainVestuarioBannerFile || catalogBusy}
+                          onClick={async () => {
+                            if (!token || !mainVestuario || !mainVestuarioBannerFile) return;
+                            const url = await uploadFile(mainVestuarioBannerFile, "catalog/banners");
+                            await updateCatalogNode(mainVestuario.id, { banner_url: url });
+                            setMainVestuarioBannerFile(null);
+                          }}
+                        >
+                          Salvar banner
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                <label className="block sm:col-span-2">
-                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Nome</span>
-                  <input
-                    value={catLabel}
-                    onChange={(e) => {
-                      setCatLabel(e.target.value);
-                      if (!catSlug.trim()) setCatSlug(slugify(e.target.value));
-                    }}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                    placeholder="Ex.: Nike / Air Force / Bermuda"
-                  />
-                </label>
-
-                <label className="block sm:col-span-2">
-                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Slug</span>
-                  <input
-                    value={catSlug}
-                    onChange={(e) => setCatSlug(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                    placeholder="Ex.: nike / air-force / bermuda"
-                  />
-                </label>
-
-                <label className="block sm:col-span-2">
-                  <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                    Logo URL (somente para marca)
-                  </span>
-                  <input
-                    value={catLogoUrl}
-                    onChange={(e) => setCatLogoUrl(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                    placeholder="https://... (ou deixe vazio)"
-                  />
-                </label>
-              </div>
-
-              <button
-                type="button"
-                onClick={createCatalogNode}
-                className="mt-4 cta rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
-                disabled={!token}
-              >
-                Criar
-              </button>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
-                Estrutura atual
-              </p>
-              {catalog.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-200">
-                  Nenhum item encontrado (ou a tabela ainda não existe).
-                </p>
-              ) : (
-                <div className="mt-4 grid gap-2 text-sm text-slate-200">
-                  {catalog
-                    .filter((n) => n.kind === "main")
-                    .sort((a, b) => a.sort_order - b.sort_order)
-                    .map((m) => (
-                      <div key={m.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                {/* Editor inline */}
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                    Editar item (nome/slug/ordem + foto)
+                  </p>
+                  {!editingCatalog ? (
+                    <p className="mt-3 text-sm text-slate-200">
+                      Clique em <b>Editar</b> em alguma lista abaixo.
+                    </p>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                         <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                          {m.label} ({m.slug})
+                          {editingCatalog.kind} · {editingCatalog.label}
                         </p>
-                        <div className="mt-3 space-y-2">
-                          {catalog
-                            .filter((n) => n.parent_id === m.id)
-                            .sort((a, b) => a.sort_order - b.sort_order)
-                            .map((c) => (
-                              <div key={c.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
-                                <div className="flex items-center justify-between gap-3">
-                                  <span>
-                                    {c.label} <span className="text-slate-400">({c.kind})</span>
-                                  </span>
-                                  <span className="text-xs text-slate-400">{c.slug}</span>
-                                </div>
-                                {c.kind === "brand" ? (
-                                  <div className="mt-2 text-xs text-slate-400">
-                                    Linhas:{" "}
-                                    {catalog
-                                      .filter((n) => n.parent_id === c.id && n.kind === "line")
-                                      .map((l) => l.label)
-                                      .join(", ") || "—"}
-                                  </div>
-                                ) : null}
-                              </div>
-                            ))}
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <label className="block">
+                            <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Nome</span>
+                            <input
+                              value={editCatalogLabel}
+                              onChange={(e) => setEditCatalogLabel(e.target.value)}
+                              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Ordem</span>
+                            <input
+                              type="number"
+                              value={editCatalogSort}
+                              onChange={(e) => setEditCatalogSort(Number(e.target.value))}
+                              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                            />
+                          </label>
+                          <label className="block sm:col-span-2">
+                            <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Slug</span>
+                            <input
+                              value={editCatalogSlug}
+                              onChange={(e) => setEditCatalogSlug(e.target.value)}
+                              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                            />
+                          </label>
+                        </div>
+
+                        {editingCatalog.kind === "brand" ? (
+                          <div className="mt-3">
+                            <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Logo (upload)</p>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => setEditLogoFile(e.target.files?.[0] ?? null)}
+                              className="mt-2 block w-full text-xs text-slate-200"
+                            />
+                          </div>
+                        ) : null}
+
+                        {editingCatalog.kind === "main" || editingCatalog.kind === "subcategory" ? (
+                          <div className="mt-3">
+                            <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Banner (upload)</p>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => setEditBannerFile(e.target.files?.[0] ?? null)}
+                              className="mt-2 block w-full text-xs text-slate-200"
+                            />
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                            onClick={saveEditCatalog}
+                            disabled={catalogBusy}
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                            onClick={() => setEditingCatalog(null)}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                            onClick={() => deleteCatalogNode(editingCatalog.id)}
+                            disabled={catalogBusy}
+                          >
+                            Remover
+                          </button>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+
+                {/* Vestuário */}
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                      Vestuário · Subcategorias
+                    </p>
+                    <span className="text-xs text-slate-400">{vestSubs.length}</span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Criar subcategoria</p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <input
+                          value={vestLabel}
+                          onChange={(e) => {
+                            setVestLabel(e.target.value);
+                            if (!vestSlug.trim()) setVestSlug(slugify(e.target.value));
+                          }}
+                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="Ex.: Bermuda"
+                        />
+                        <input
+                          type="number"
+                          value={vestSort}
+                          onChange={(e) => setVestSort(Number(e.target.value))}
+                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        />
+                        <input
+                          value={vestSlug}
+                          onChange={(e) => setVestSlug(e.target.value)}
+                          className="sm:col-span-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="slug (ex.: bermuda)"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                        disabled={!token || !mainVestuario || !vestLabel.trim() || catalogBusy}
+                        onClick={async () => {
+                          if (!token || !mainVestuario) return;
+                          await createCatalogNode({
+                            kind: "subcategory",
+                            parent_id: mainVestuario.id,
+                            label: vestLabel.trim(),
+                            slug: (vestSlug.trim() || slugify(vestLabel)).trim(),
+                            sort_order: vestSort,
+                          });
+                          setVestLabel("");
+                          setVestSlug("");
+                          setVestSort(10);
+                        }}
+                      >
+                        Criar
+                      </button>
+                    </div>
+
+                    <div className="grid gap-2">
+                      {vestSubs.map((s) => (
+                        <div key={s.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-200">{s.label}</p>
+                              <p className="mt-1 text-xs text-slate-400">{s.slug}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                onClick={() => startEditCatalog(s)}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                onClick={() => deleteCatalogNode(s.id)}
+                                disabled={catalogBusy}
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sneakers */}
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+                      Sneakers · Marcas e Linhas
+                    </p>
+                    <span className="text-xs text-slate-400">{brands.length}</span>
+                  </div>
+
+                  {/* Criar marca */}
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Criar marca (logo por upload)</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <input
+                        value={brandLabel}
+                        onChange={(e) => {
+                          setBrandLabel(e.target.value);
+                          if (!brandSlug.trim()) setBrandSlug(slugify(e.target.value));
+                        }}
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        placeholder="Ex.: Nike"
+                      />
+                      <input
+                        type="number"
+                        value={brandSort}
+                        onChange={(e) => setBrandSort(Number(e.target.value))}
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      />
+                      <input
+                        value={brandSlug}
+                        onChange={(e) => setBrandSlug(e.target.value)}
+                        className="sm:col-span-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        placeholder="slug (ex.: nike)"
+                      />
+                      <div className="sm:col-span-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setBrandLogoFile(e.target.files?.[0] ?? null)}
+                          className="block w-full text-xs text-slate-200"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                      disabled={!token || !mainSneakers || !brandLabel.trim() || !brandLogoFile || catalogBusy}
+                      onClick={async () => {
+                        if (!token || !mainSneakers || !brandLogoFile) return;
+                        const logo = await uploadFile(brandLogoFile, "catalog/brand-logos");
+                        await createCatalogNode({
+                          kind: "brand",
+                          parent_id: mainSneakers.id,
+                          label: brandLabel.trim(),
+                          slug: (brandSlug.trim() || slugify(brandLabel)).trim(),
+                          logo_url: logo,
+                          sort_order: brandSort,
+                        });
+                        setBrandLabel("");
+                        setBrandSlug("");
+                        setBrandSort(10);
+                        setBrandLogoFile(null);
+                      }}
+                    >
+                      Criar marca
+                    </button>
+                  </div>
+
+                  {/* Criar linha */}
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Criar linha (dentro de uma marca)</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <select
+                        value={lineBrandId}
+                        onChange={(e) => setLineBrandId(e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      >
+                        <option value="">Selecione a marca</option>
+                        {brands.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        value={lineSort}
+                        onChange={(e) => setLineSort(Number(e.target.value))}
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                      />
+                      <input
+                        value={lineLabel}
+                        onChange={(e) => {
+                          setLineLabel(e.target.value);
+                          if (!lineSlug.trim()) setLineSlug(slugify(e.target.value));
+                        }}
+                        className="sm:col-span-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        placeholder="Ex.: Air Force"
+                      />
+                      <input
+                        value={lineSlug}
+                        onChange={(e) => setLineSlug(e.target.value)}
+                        className="sm:col-span-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        placeholder="slug (ex.: air-force)"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                      disabled={!token || !lineBrandId || !lineLabel.trim() || catalogBusy}
+                      onClick={async () => {
+                        if (!token) return;
+                        await createCatalogNode({
+                          kind: "line",
+                          parent_id: lineBrandId,
+                          label: lineLabel.trim(),
+                          slug: (lineSlug.trim() || slugify(lineLabel)).trim(),
+                          sort_order: lineSort,
+                        });
+                        setLineLabel("");
+                        setLineSlug("");
+                        setLineSort(10);
+                      }}
+                    >
+                      Criar linha
+                    </button>
+                  </div>
+
+                  {/* Lista */}
+                  <div className="mt-4 space-y-2">
+                    {brands.map((b) => {
+                      const lines = catalog.filter((n) => n.kind === "line" && n.parent_id === b.id).sort((a,b2)=>a.sort_order-b2.sort_order);
+                      return (
+                        <div key={b.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-200">{b.label}</p>
+                              <p className="mt-1 text-xs text-slate-400">{b.slug}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                onClick={() => startEditCatalog(b)}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                onClick={() => deleteCatalogNode(b.id)}
+                                disabled={catalogBusy}
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          </div>
+                          {lines.length ? (
+                            <div className="mt-3 grid gap-2">
+                              {lines.map((l) => (
+                                <div key={l.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                      <p className="text-sm text-slate-200">{l.label}</p>
+                                      <p className="mt-1 text-xs text-slate-400">{l.slug}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                        onClick={() => startEditCatalog(l)}
+                                      >
+                                        Editar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                        onClick={() => deleteCatalogNode(l.id)}
+                                        disabled={catalogBusy}
+                                      >
+                                        Remover
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-3 text-xs text-slate-400">Sem linhas ainda.</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* Landing (texto editável) */}

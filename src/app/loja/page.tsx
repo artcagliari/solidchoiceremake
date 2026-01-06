@@ -24,6 +24,7 @@ type CatalogNode = {
   label: string;
   slug: string;
   logo_url: string | null;
+  banner_url?: string | null;
   sort_order: number;
 };
 
@@ -67,7 +68,7 @@ export default async function LojaPage({
   try {
     const { data: catData, error: catError } = await supabaseAdmin
       .from("catalog_nodes")
-      .select("id,kind,parent_id,label,slug,logo_url,sort_order");
+      .select("id,kind,parent_id,label,slug,logo_url,banner_url,sort_order");
     if (!catError && Array.isArray(catData)) {
       catalog = catData as unknown as CatalogNode[];
       hasCatalog = true;
@@ -324,18 +325,35 @@ export default async function LojaPage({
         {/* Entrada: 2 categorias principais */}
         {!isMainSelected ? (
           <div className="mt-8 grid gap-6">
+            {(() => {
+              const mainSneakersNode = hasCatalog ? findBySlug("main", "sneakers") : null;
+              const mainVestuarioNode = hasCatalog ? findBySlug("main", "vestuario") : null;
+              const sneakersBanner = mainSneakersNode?.banner_url || "/assets/banner-facil.png";
+              const vestBanner = mainVestuarioNode?.banner_url || "/assets/banner-whats.png";
+              const sneakersRemote = /^https?:\/\//i.test(sneakersBanner);
+              const vestRemote = /^https?:\/\//i.test(vestBanner);
+              return (
+                <>
             <Link
               href="/loja?main=sneakers"
               className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
             >
               <div className="pointer-events-none absolute inset-0 opacity-30">
-                <Image
-                  src="/assets/banner-facil.png"
-                  alt="Sneakers"
-                  fill
-                  sizes="100vw"
-                  className="object-cover"
-                />
+                {sneakersRemote ? (
+                  <img
+                    src={sneakersBanner}
+                    alt="Sneakers"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={sneakersBanner}
+                    alt="Sneakers"
+                    fill
+                    sizes="100vw"
+                    className="object-cover"
+                  />
+                )}
               </div>
               <div className="relative z-10">
                 <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
@@ -356,13 +374,21 @@ export default async function LojaPage({
               className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
             >
               <div className="pointer-events-none absolute inset-0 opacity-30">
-                <Image
-                  src="/assets/banner-whats.png"
-                  alt="Vestuário"
-                  fill
-                  sizes="100vw"
-                  className="object-cover"
-                />
+                {vestRemote ? (
+                  <img
+                    src={vestBanner}
+                    alt="Vestuário"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={vestBanner}
+                    alt="Vestuário"
+                    fill
+                    sizes="100vw"
+                    className="object-cover"
+                  />
+                )}
               </div>
               <div className="relative z-10">
                 <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
@@ -377,6 +403,9 @@ export default async function LojaPage({
                 </div>
               </div>
             </Link>
+                </>
+              );
+            })()}
           </div>
         ) : null}
 

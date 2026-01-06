@@ -8,6 +8,7 @@ create table if not exists catalog_nodes (
   label text not null,
   slug text not null unique,
   logo_url text,
+  banner_url text,
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
@@ -47,5 +48,8 @@ on conflict (slug) do nothing;
 
 -- Products: vínculo opcional com o catálogo (aponta para subcategory ou line)
 alter table products add column if not exists catalog_node_id uuid references catalog_nodes(id);
+
+-- Se você já rodou uma versão antiga desse SQL, rode só este ALTER:
+alter table catalog_nodes add column if not exists banner_url text;
 
 

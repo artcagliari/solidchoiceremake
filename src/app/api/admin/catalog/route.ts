@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from("catalog_nodes")
-    .select("id,kind,parent_id,label,slug,logo_url,sort_order,created_at")
+    .select("id,kind,parent_id,label,slug,logo_url,banner_url,sort_order,created_at")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       label?: string;
       slug?: string;
       logo_url?: string | null;
+      banner_url?: string | null;
       sort_order?: number;
     };
 
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
     const slug = String(body.slug ?? "").trim();
     const parent_id = body.parent_id ? String(body.parent_id) : null;
     const logo_url = body.logo_url ? String(body.logo_url).trim() : null;
+    const banner_url = body.banner_url ? String(body.banner_url).trim() : null;
     const sort_order = typeof body.sort_order === "number" ? Math.round(body.sort_order) : 0;
 
     if (!kind || !label || !slug) {
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from("catalog_nodes")
-      .insert({ kind, parent_id, label, slug, logo_url, sort_order })
+      .insert({ kind, parent_id, label, slug, logo_url, banner_url, sort_order })
       .select("id")
       .single();
 
@@ -70,6 +72,7 @@ export async function PUT(req: Request) {
         label: string;
         slug: string;
         logo_url: string | null;
+        banner_url: string | null;
         sort_order: number;
       }>;
     };
@@ -82,6 +85,7 @@ export async function PUT(req: Request) {
     for (const [k, v] of Object.entries(patch)) {
       if (k === "sort_order" && typeof v === "number") normalized[k] = Math.round(v);
       else if (k === "logo_url") normalized[k] = v ? String(v).trim() : null;
+      else if (k === "banner_url") normalized[k] = v ? String(v).trim() : null;
       else if (v === null) normalized[k] = null;
       else if (typeof v === "string") normalized[k] = v.trim();
       else normalized[k] = v;
