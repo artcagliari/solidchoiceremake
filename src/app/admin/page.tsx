@@ -138,7 +138,7 @@ export default function AdminPage() {
   const [catalogVestSubId, setCatalogVestSubId] = useState<string>("");
 
   // Catalog node creation
-  const [catKind, setCatKind] = useState<"subcategory" | "brand" | "line">("subcategory");
+  const [catKind, setCatKind] = useState<"main" | "subcategory" | "brand" | "line">("subcategory");
   const [catParentId, setCatParentId] = useState<string>("");
   const [catLabel, setCatLabel] = useState("");
   const [catSlug, setCatSlug] = useState("");
@@ -250,7 +250,7 @@ export default function AdminPage() {
     try {
       const payload = {
         kind: catKind,
-        parent_id: catParentId || null,
+        parent_id: catKind === "main" ? null : catParentId || null,
         label: catLabel.trim(),
         slug: (catSlug.trim() || slugify(catLabel)).trim(),
         logo_url: catLogoUrl.trim() || null,
@@ -1142,6 +1142,7 @@ export default function AdminPage() {
                     onChange={(e) => setCatKind(e.target.value as typeof catKind)}
                     className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
                   >
+                    <option value="main">Categoria principal (main)</option>
                     <option value="subcategory">Subcategoria (Vestuário)</option>
                     <option value="brand">Marca (Sneakers)</option>
                     <option value="line">Linha (Sneakers)</option>
@@ -1163,6 +1164,7 @@ export default function AdminPage() {
                   <select
                     value={catParentId}
                     onChange={(e) => setCatParentId(e.target.value)}
+                    disabled={catKind === "main"}
                     className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
                   >
                     <option value="">(selecione)</option>
