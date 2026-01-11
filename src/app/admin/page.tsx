@@ -1346,11 +1346,19 @@ export default function AdminPage() {
                   .sort((a, b) => a.sort_order - b.sort_order)
               : [];
 
+            const subMainHasBrands = subMain
+              ? catalog.some((n) => n.kind === "brand" && n.parent_id === subMain.id)
+              : false;
+
             const brands = brandMain
               ? catalog
                   .filter((n) => n.kind === "brand" && n.parent_id === brandMain.id)
                   .sort((a, b) => a.sort_order - b.sort_order)
               : [];
+
+            const brandMainHasBrands = brandMain
+              ? catalog.some((n) => n.kind === "brand" && n.parent_id === brandMain.id)
+              : false;
 
             return (
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -1601,6 +1609,16 @@ export default function AdminPage() {
                       ))}
                     </select>
 
+                    {subMain && subMainHasBrands ? (
+                      <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm text-slate-200">
+                        <b>{subMain.label}</b> usa o esquema <b>Marca → Linha</b> (ex.: Sneakers).
+                        <div className="mt-1 text-xs text-slate-300">
+                          Por isso, <b>Subcategorias</b> ficam desativadas aqui.
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {!subMainHasBrands ? (
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Criar subcategoria</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -1647,6 +1665,7 @@ export default function AdminPage() {
                         Criar
                       </button>
                     </div>
+                    ) : null}
 
                     <div className="grid gap-2">
                       {subcategories.map((s) => (
@@ -1704,6 +1723,15 @@ export default function AdminPage() {
                       </option>
                     ))}
                   </select>
+
+                  {brandMain && !brandMainHasBrands ? (
+                    <div className="mt-3 rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-slate-200">
+                      Esta categoria principal não está usando <b>Marcas/Linhas</b> ainda.
+                      <div className="mt-1 text-xs text-slate-400">
+                        Se você criar uma marca aqui, ela passa a funcionar no modo <b>Marca → Linha</b>.
+                      </div>
+                    </div>
+                  ) : null}
 
                   {/* Criar marca */}
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
