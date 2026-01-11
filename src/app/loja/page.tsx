@@ -48,7 +48,6 @@ export default async function LojaPage({
 
   const mainRaw = typeof sp?.main === "string" ? sp.main : null;
   const main = mainRaw ? mainRaw.trim().toLowerCase() : null; // sneakers | vestuario
-  const isMainSelected = main === "sneakers" || main === "vestuario";
 
   const selectedCatRaw =
     typeof sp?.cat === "string" ? sp.cat : null;
@@ -139,7 +138,9 @@ export default async function LojaPage({
   };
 
   const headerTitle =
-    main === "sneakers"
+    hasCatalog && main
+      ? (catalog.find((n) => n.kind === "main" && n.slug === main)?.label ?? "CATÁLOGO SOLID CHOICE").toUpperCase()
+      : main === "sneakers"
       ? "SNEAKERS"
       : main === "vestuario"
       ? "VESTUÁRIO"
@@ -153,28 +154,20 @@ export default async function LojaPage({
       .filter((n) => n.parent_id === parentId && (!kind || n.kind === kind))
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
-  const hrefMain = (m: "sneakers" | "vestuario") => `/loja?main=${encodeURIComponent(m)}`;
-  const hrefSneakersBrand = (brandSlug: string) => {
-    if (selectedBrand === brandSlug) return hrefMain("sneakers");
-    return `/loja?main=sneakers&brand=${encodeURIComponent(brandSlug)}`;
-  };
-  const hrefSneakersLine = (lineSlug: string) => {
-    if (!selectedBrand) return hrefMain("sneakers");
-    if (selectedLine === lineSlug) {
-      return `/loja?main=sneakers&brand=${encodeURIComponent(selectedBrand)}`;
-    }
-    return `/loja?main=sneakers&brand=${encodeURIComponent(selectedBrand)}&line=${encodeURIComponent(lineSlug)}`;
-  };
-  const hrefVestSub = (subSlug: string) => {
-    if (selectedCat === subSlug) return hrefMain("vestuario");
-    return `/loja?main=vestuario&cat=${encodeURIComponent(subSlug)}`;
-  };
+  const selectedMainNode = hasCatalog && main ? findBySlug("main", main) : null;
+  const isMainSelected = hasCatalog ? !!selectedMainNode : main === "sneakers" || main === "vestuario";
+  const mainHasBrands = hasCatalog
+    ? !!selectedMainNode && childrenOf(selectedMainNode.id, "brand").length > 0
+    : main === "sneakers";
+
+  const hrefMain = (m: string) => `/loja?main=${encodeURIComponent(m)}`;
   const hrefVestBrand = (brandName: string) => {
-    if (!selectedCat) return hrefMain("vestuario");
+    if (!selectedMainNode) return "/loja";
+    if (!selectedCat) return hrefMain(selectedMainNode.slug);
     if (selectedBrand === brandName) {
-      return `/loja?main=vestuario&cat=${encodeURIComponent(selectedCat)}`;
+      return `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}`;
     }
-    return `/loja?main=vestuario&cat=${encodeURIComponent(selectedCat)}&brand=${encodeURIComponent(brandName)}`;
+    return `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}&brand=${encodeURIComponent(brandName)}`;
   };
 
   const renderProductCard = (p: Product) => {
@@ -322,98 +315,160 @@ export default async function LojaPage({
 
         <div id="produtos" className="mt-10" />
 
-        {/* Entrada: 2 categorias principais */}
+        {/* Entrada: categorias principais */}
         {!isMainSelected ? (
           <div className="mt-8 grid gap-6">
             {(() => {
-              const mainSneakersNode = hasCatalog ? findBySlug("main", "sneakers") : null;
-              const mainVestuarioNode = hasCatalog ? findBySlug("main", "vestuario") : null;
-              const sneakersBanner = mainSneakersNode?.banner_url || "/assets/banner-facil.png";
-              const vestBanner = mainVestuarioNode?.banner_url || "/assets/banner-whats.png";
+              const mains = hasCatalog
+                ? catalog
+                    .filter((n) => n.kind === "main")
+                    .slice()
+                    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                : [];
+
+              if (hasCatalog && mains.length) {
+                return (
+                  <>
+                    {mains.map((m) => {
+                      const banner = m.banner_url || "/assets/banner-facil.png";
+                      const remote = /^https?:\/\//i.test(banner);
+                      const title = (m.label ?? m.slug ?? "Categoria").toUpperCase();
+                      const subtitle =
+                        m.slug === "sneakers"
+                          ? "Explore por marca e monte sua cotação."
+                          : m.slug === "vestuario"
+                          ? "Bermuda, camisa, calça e mais."
+                          : "Explore os produtos dessa categoria.";
+
+                      return (
+                        <Link
+                          key={m.id}
+                          href={`/loja?main=${encodeURIComponent(m.slug)}`}
+                          className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
+                        >
+                          <div className="pointer-events-none absolute inset-0 opacity-30">
+                            {remote ? (
+                              <img
+                                src={banner}
+                                alt={m.label}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Image
+                                src={banner}
+                                alt={m.label}
+                                fill
+                                sizes="100vw"
+                                className="object-cover"
+                              />
+                            )}
+                          </div>
+                          <div className="relative z-10">
+                            <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
+                              Categoria principal
+                            </p>
+                            <h2 className="mt-4 text-4xl text-[#f2d3a8]">{title}</h2>
+                            <p className="mt-2 max-w-md text-sm text-slate-200">
+                              {subtitle}
+                            </p>
+                            <div className="mt-6 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200">
+                              Entrar
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </>
+                );
+              }
+
+              // fallback antigo (se não houver catalog_nodes)
+              const sneakersBanner = "/assets/banner-facil.png";
+              const vestBanner = "/assets/banner-whats.png";
               const sneakersRemote = /^https?:\/\//i.test(sneakersBanner);
               const vestRemote = /^https?:\/\//i.test(vestBanner);
               return (
                 <>
-            <Link
-              href="/loja?main=sneakers"
-              className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
-            >
-              <div className="pointer-events-none absolute inset-0 opacity-30">
-                {sneakersRemote ? (
-                  <img
-                    src={sneakersBanner}
-                    alt="Sneakers"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <Image
-                    src={sneakersBanner}
-                    alt="Sneakers"
-                    fill
-                    sizes="100vw"
-                    className="object-cover"
-                  />
-                )}
-              </div>
-              <div className="relative z-10">
-                <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
-                  Categoria principal
-                </p>
-                <h2 className="mt-4 text-4xl text-[#f2d3a8]">SNEAKERS</h2>
-                <p className="mt-2 max-w-md text-sm text-slate-200">
-                  Explore por marca e monte sua cotação.
-                </p>
-                <div className="mt-6 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200">
-                  Entrar
-                </div>
-              </div>
-            </Link>
+                  <Link
+                    href="/loja?main=sneakers"
+                    className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
+                  >
+                    <div className="pointer-events-none absolute inset-0 opacity-30">
+                      {sneakersRemote ? (
+                        <img
+                          src={sneakersBanner}
+                          alt="Sneakers"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={sneakersBanner}
+                          alt="Sneakers"
+                          fill
+                          sizes="100vw"
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="relative z-10">
+                      <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
+                        Categoria principal
+                      </p>
+                      <h2 className="mt-4 text-4xl text-[#f2d3a8]">SNEAKERS</h2>
+                      <p className="mt-2 max-w-md text-sm text-slate-200">
+                        Explore por marca e monte sua cotação.
+                      </p>
+                      <div className="mt-6 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200">
+                        Entrar
+                      </div>
+                    </div>
+                  </Link>
 
-            <Link
-              href="/loja?main=vestuario"
-              className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
-            >
-              <div className="pointer-events-none absolute inset-0 opacity-30">
-                {vestRemote ? (
-                  <img
-                    src={vestBanner}
-                    alt="Vestuário"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <Image
-                    src={vestBanner}
-                    alt="Vestuário"
-                    fill
-                    sizes="100vw"
-                    className="object-cover"
-                  />
-                )}
-              </div>
-              <div className="relative z-10">
-                <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
-                  Categoria principal
-                </p>
-                <h2 className="mt-4 text-4xl text-[#f2d3a8]">VESTUÁRIO</h2>
-                <p className="mt-2 max-w-md text-sm text-slate-200">
-                  Bermuda, camisa, calça e mais.
-                </p>
-                <div className="mt-6 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200">
-                  Entrar
-                </div>
-              </div>
-            </Link>
+                  <Link
+                    href="/loja?main=vestuario"
+                    className="section-shell group relative overflow-hidden rounded-3xl p-6 transition-transform hover:-translate-y-1"
+                  >
+                    <div className="pointer-events-none absolute inset-0 opacity-30">
+                      {vestRemote ? (
+                        <img
+                          src={vestBanner}
+                          alt="Vestuário"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={vestBanner}
+                          alt="Vestuário"
+                          fill
+                          sizes="100vw"
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="relative z-10">
+                      <p className="badge inline-flex rounded-full px-3 py-2 text-[11px]">
+                        Categoria principal
+                      </p>
+                      <h2 className="mt-4 text-4xl text-[#f2d3a8]">VESTUÁRIO</h2>
+                      <p className="mt-2 max-w-md text-sm text-slate-200">
+                        Bermuda, camisa, calça e mais.
+                      </p>
+                      <div className="mt-6 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200">
+                        Entrar
+                      </div>
+                    </div>
+                  </Link>
                 </>
               );
             })()}
           </div>
         ) : null}
 
-        {/* Sneakers: marcas com botões de logo */}
-        {main === "sneakers" ? (
+        {/* Fluxo tipo Sneakers: marcas com botões de logo */}
+        {mainHasBrands ? (
           <>
             {hasCatalog ? (() => {
-              const mainNode = findBySlug("main", "sneakers");
+              const mainNode = selectedMainNode;
               const brandNodes = mainNode ? childrenOf(mainNode.id, "brand") : [];
               const brandNode = selectedBrand ? findBySlug("brand", selectedBrand) : null;
               const lineNodes = brandNode ? childrenOf(brandNode.id, "line") : [];
@@ -440,7 +495,7 @@ export default async function LojaPage({
                       </div>
                       {selectedBrand ? (
                         <Link
-                          href="/loja?main=sneakers"
+                          href={mainNode ? `/loja?main=${encodeURIComponent(mainNode.slug)}` : "/loja"}
                           className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                         >
                           Ver todas marcas
@@ -456,7 +511,7 @@ export default async function LojaPage({
                         return (
                           <Link
                             key={b.id}
-                            href={`/loja?main=sneakers&brand=${encodeURIComponent(b.slug)}`}
+                            href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "sneakers")}&brand=${encodeURIComponent(b.slug)}`}
                             className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border bg-black/20 transition ${
                               active
                                 ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
@@ -500,7 +555,7 @@ export default async function LojaPage({
                         </div>
                         {selectedLine ? (
                           <Link
-                            href={`/loja?main=sneakers&brand=${encodeURIComponent(brandNode.slug)}`}
+                            href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "sneakers")}&brand=${encodeURIComponent(brandNode.slug)}`}
                             className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                           >
                             Ver todas linhas
@@ -514,7 +569,7 @@ export default async function LojaPage({
                           return (
                             <Link
                               key={l.id}
-                              href={`/loja?main=sneakers&brand=${encodeURIComponent(brandNode.slug)}&line=${encodeURIComponent(l.slug)}`}
+                              href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "sneakers")}&brand=${encodeURIComponent(brandNode.slug)}&line=${encodeURIComponent(l.slug)}`}
                               className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
                                 active ? "cta" : "cta-secondary"
                               }`}
@@ -563,7 +618,7 @@ export default async function LojaPage({
                               </h2>
                               {canShowMore ? (
                                 <Link
-                                  href={`/loja?main=sneakers&brand=${encodeURIComponent(brandNode.slug)}&line=${encodeURIComponent(l.slug)}`}
+                                  href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "sneakers")}&brand=${encodeURIComponent(brandNode.slug)}&line=${encodeURIComponent(l.slug)}`}
                                   className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                                 >
                                   Ver mais
@@ -661,10 +716,10 @@ export default async function LojaPage({
           </>
         ) : null}
 
-        {/* Vestuário: subcategorias como hoje */}
-        {main === "vestuario" ? (
+        {/* Catálogo por subcategorias (qualquer main sem marcas) */}
+        {isMainSelected && !mainHasBrands ? (
           hasCatalog ? (() => {
-            const mainNode = findBySlug("main", "vestuario");
+            const mainNode = selectedMainNode;
             const subNodes = mainNode ? childrenOf(mainNode.id, "subcategory") : [];
             const selectedSub = selectedCat ? findBySlug("subcategory", selectedCat) : null;
 
@@ -705,7 +760,7 @@ export default async function LojaPage({
                         </h2>
                         {canShowMore ? (
                           <Link
-                            href={`/loja?main=vestuario&cat=${encodeURIComponent(s.slug)}`}
+                            href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "vestuario")}&cat=${encodeURIComponent(s.slug)}`}
                             className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                           >
                             Ver mais
@@ -721,7 +776,7 @@ export default async function LojaPage({
                               Filtrar por marca
                             </p>
                             <Link
-                              href={`/loja?main=vestuario&cat=${encodeURIComponent(s.slug)}`}
+                              href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "vestuario")}&cat=${encodeURIComponent(s.slug)}`}
                               className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                             >
                               Limpar

@@ -118,8 +118,8 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<Product | null>(null);
 
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("Calçado");
-  const [brand, setBrand] = useState("Solid Choice");
+  const [, setCategory] = useState("Calçado");
+  const [, setBrand] = useState("Solid Choice");
   const [badge, setBadge] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("0,00");
@@ -133,7 +133,7 @@ export default function AdminPage() {
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
 
   // Product catalog selection (new taxonomy)
-  const [catalogMain, setCatalogMain] = useState<"sneakers" | "vestuario">("vestuario");
+  const [catalogMain, setCatalogMain] = useState<string>("vestuario");
   const [catalogBrandId, setCatalogBrandId] = useState<string>("");
   const [catalogLineId, setCatalogLineId] = useState<string>("");
   const [catalogVestSubId, setCatalogVestSubId] = useState<string>("");
@@ -141,9 +141,15 @@ export default function AdminPage() {
   // Catalog editing (simplificado por seções)
   const [catalogBusy, setCatalogBusy] = useState(false);
 
-  // Principais (main)
-  const [mainSneakersBannerFile, setMainSneakersBannerFile] = useState<File | null>(null);
-  const [mainVestuarioBannerFile, setMainVestuarioBannerFile] = useState<File | null>(null);
+  // Catálogo: criação de categoria principal (main)
+  const [mainLabel, setMainLabel] = useState("");
+  const [mainSlug, setMainSlug] = useState("");
+  const [mainSort, setMainSort] = useState<number>(10);
+  const [mainBannerFile, setMainBannerFile] = useState<File | null>(null);
+
+  // Catálogo: filtros de gerenciamento
+  const [manageSubMainId, setManageSubMainId] = useState<string>("");
+  const [manageBrandMainId, setManageBrandMainId] = useState<string>("");
 
   // Vestuário: subcategoria
   const [vestLabel, setVestLabel] = useState("");
@@ -193,6 +199,40 @@ export default function AdminPage() {
     };
   }, [orders]);
 
+  const mainNodes = useMemo(() => {
+    return catalog
+      .filter((n) => n.kind === "main")
+      .slice()
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [catalog]);
+
+  const selectedMainNode = useMemo(() => {
+    return mainNodes.find((n) => n.slug === catalogMain) ?? null;
+  }, [mainNodes, catalogMain]);
+
+  const selectedMainHasBrands = useMemo(() => {
+    if (!selectedMainNode) return catalogMain === "sneakers";
+    return catalog.some(
+      (n) => n.kind === "brand" && n.parent_id === selectedMainNode.id
+    );
+  }, [catalog, selectedMainNode, catalogMain]);
+
+  const selectedMainSubcategories = useMemo(() => {
+    if (!selectedMainNode) return [];
+    return catalog
+      .filter((n) => n.kind === "subcategory" && n.parent_id === selectedMainNode.id)
+      .slice()
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [catalog, selectedMainNode]);
+
+  const selectedMainBrands = useMemo(() => {
+    if (!selectedMainNode) return [];
+    return catalog
+      .filter((n) => n.kind === "brand" && n.parent_id === selectedMainNode.id)
+      .slice()
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [catalog, selectedMainNode]);
+
   const filteredOrders = useMemo(() => {
     const base =
       orderFilter === "all"
@@ -234,6 +274,27 @@ export default function AdminPage() {
       setSizes(defaultSizesByCategory);
     }
   }, [catalogMain, defaultSizesByCategory, sizesTouched]);
+
+  useEffect(() => {
+    // Defaults de gerenciamento (quando o catálogo carregar)
+    if (!catalog.length) return;
+
+    if (!manageSubMainId) {
+      const preferred =
+        catalog.find((n) => n.kind === "main" && n.slug === "vestuario") ??
+        catalog.find((n) => n.kind === "main") ??
+        null;
+      if (preferred) setManageSubMainId(preferred.id);
+    }
+
+    if (!manageBrandMainId) {
+      const preferred =
+        catalog.find((n) => n.kind === "main" && n.slug === "sneakers") ??
+        catalog.find((n) => n.kind === "main") ??
+        null;
+      if (preferred) setManageBrandMainId(preferred.id);
+    }
+  }, [catalog, manageBrandMainId, manageSubMainId]);
 
   const fetchAll = async (t: string) => {
     const [pRes, oRes] = await Promise.all([
@@ -498,14 +559,28 @@ export default function AdminPage() {
 
     // Novo catálogo: inferir seleção ao editar
     if (p.catalog_node_id && catalog.length) {
-      const node = catalog.find((n) => n.id === p.catalog_node_id) ?? null;
+      const findNodeById = (id: string) => catalog.find((n) => n.id === id) ?? null;
+      const findMainSlugForNode = (nodeId: string) => {
+        let cur = findNodeById(nodeId);
+        // sobe até achar o main
+        for (let i = 0; i < 5 && cur; i++) {
+          if (cur.kind === "main") return cur.slug;
+          if (!cur.parent_id) break;
+          cur = findNodeById(cur.parent_id);
+        }
+        return null;
+      };
+
+      const node = findNodeById(p.catalog_node_id) ?? null;
       if (node?.kind === "line") {
-        setCatalogMain("sneakers");
+        const mainSlug = findMainSlugForNode(node.id) ?? "sneakers";
+        setCatalogMain(mainSlug);
         setCatalogLineId(node.id);
         setCatalogBrandId(node.parent_id ?? "");
         setCatalogVestSubId("");
       } else if (node?.kind === "subcategory") {
-        setCatalogMain("vestuario");
+        const mainSlug = findMainSlugForNode(node.id) ?? "vestuario";
+        setCatalogMain(mainSlug);
         setCatalogVestSubId(node.id);
         setCatalogBrandId("");
         setCatalogLineId("");
@@ -545,7 +620,13 @@ export default function AdminPage() {
       let derivedBrand = "Solid Choice";
       let derivedCatalogNodeId: string | null = null;
 
-      if (catalogMain === "sneakers") {
+      const selectedMainNode =
+        catalog.find((n) => n.kind === "main" && n.slug === catalogMain) ?? null;
+      const mainHasBrands = selectedMainNode
+        ? catalog.some((n) => n.kind === "brand" && n.parent_id === selectedMainNode.id)
+        : catalogMain === "sneakers"; // fallback
+
+      if (mainHasBrands) {
         derivedCategory = "Calçado";
         let bId = catalogBrandId;
         if (!bId && catalogLineId) {
@@ -557,7 +638,7 @@ export default function AdminPage() {
         derivedCatalogNodeId = catalogLineId || null;
       } else {
         const subNode = catalogVestSubId ? findNodeById(catalogVestSubId) : null;
-        derivedCategory = subNode?.label ?? "Vestuário";
+        derivedCategory = subNode?.label ?? selectedMainNode?.label ?? "Vestuário";
         derivedBrand = "Solid Choice";
         derivedCatalogNodeId = catalogVestSubId || null;
       }
@@ -764,38 +845,49 @@ export default function AdminPage() {
                   Catálogo (novo)
                 </p>
                 <p className="mt-2 text-xs text-slate-300">
-                  Para Sneakers: selecione Marca + Linha. Para Vestuário: selecione a Subcategoria.
+                  Se a categoria principal tiver <b>Marcas</b>: selecione Marca + Linha. Caso contrário: selecione a Subcategoria.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Principal</span>
                     <select
                       value={catalogMain}
-                      onChange={(e) => setCatalogMain(e.target.value as "sneakers" | "vestuario")}
+                      onChange={(e) => {
+                        const next = String(e.target.value);
+                        setCatalogMain(next);
+                        setCatalogVestSubId("");
+                        setCatalogBrandId("");
+                        setCatalogLineId("");
+                      }}
                       className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
                     >
-                      <option value="sneakers">Sneakers</option>
-                      <option value="vestuario">Vestuário</option>
+                      {mainNodes.length ? (
+                        mainNodes.map((n) => (
+                          <option key={n.id} value={n.slug}>
+                            {n.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="sneakers">Sneakers</option>
+                          <option value="vestuario">Vestuário</option>
+                        </>
+                      )}
                     </select>
                   </label>
 
-                  {catalogMain === "vestuario" ? (
+                  {!selectedMainHasBrands ? (
                     <label className="block">
-                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Subcategoria (Vestuário)</span>
+                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                        Subcategoria
+                      </span>
                       <select
                         value={catalogVestSubId}
                         onChange={(e) => setCatalogVestSubId(e.target.value)}
                         className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
                       >
                         <option value="">(sem)</option>
-                        {catalog
-                          .filter((n) => n.kind === "main" && n.slug === "vestuario")
-                          .flatMap((mainNode) =>
-                            catalog
-                              .filter((n) => n.parent_id === mainNode.id && n.kind === "subcategory")
-                              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                          )
-                          .map((n) => (
+                        {selectedMainSubcategories.map((n) => (
                             <option key={n.id} value={n.id}>
                               {n.label}
                             </option>
@@ -805,7 +897,9 @@ export default function AdminPage() {
                   ) : (
                     <>
                       <label className="block">
-                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Marca (Sneakers)</span>
+                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                          Marca
+                        </span>
                         <select
                           value={catalogBrandId}
                           onChange={(e) => {
@@ -815,14 +909,7 @@ export default function AdminPage() {
                           className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
                         >
                           <option value="">(sem)</option>
-                          {catalog
-                            .filter((n) => n.kind === "main" && n.slug === "sneakers")
-                            .flatMap((mainNode) =>
-                              catalog
-                                .filter((n) => n.parent_id === mainNode.id && n.kind === "brand")
-                                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                            )
-                            .map((n) => (
+                          {selectedMainBrands.map((n) => (
                               <option key={n.id} value={n.id}>
                                 {n.label}
                               </option>
@@ -1243,10 +1330,27 @@ export default function AdminPage() {
           </div>
 
           {(() => {
-            const mainSneakers = catalog.find((n) => n.kind === "main" && n.slug === "sneakers") ?? null;
-            const mainVestuario = catalog.find((n) => n.kind === "main" && n.slug === "vestuario") ?? null;
-            const brands = mainSneakers ? catalog.filter((n) => n.kind === "brand" && n.parent_id === mainSneakers.id).sort((a,b)=>a.sort_order-b.sort_order) : [];
-            const vestSubs = mainVestuario ? catalog.filter((n) => n.kind === "subcategory" && n.parent_id === mainVestuario.id).sort((a,b)=>a.sort_order-b.sort_order) : [];
+            const mains = mainNodes;
+            const subMain =
+              catalog.find((n) => n.kind === "main" && n.id === manageSubMainId) ??
+              mains[0] ??
+              null;
+            const brandMain =
+              catalog.find((n) => n.kind === "main" && n.id === manageBrandMainId) ??
+              mains[0] ??
+              null;
+
+            const subcategories = subMain
+              ? catalog
+                  .filter((n) => n.kind === "subcategory" && n.parent_id === subMain.id)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+              : [];
+
+            const brands = brandMain
+              ? catalog
+                  .filter((n) => n.kind === "brand" && n.parent_id === brandMain.id)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+              : [];
 
             return (
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -1257,75 +1361,117 @@ export default function AdminPage() {
                   </p>
                   <div className="mt-4 grid gap-4">
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-slate-200">Sneakers</p>
-                        {mainSneakers?.banner_url ? (
-                          <a
-                            href={mainSneakers.banner_url}
-                            target="_blank"
-                            className="text-xs text-slate-300 underline"
-                          >
-                            ver imagem
-                          </a>
-                        ) : null}
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                        Criar categoria principal
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => setMainSneakersBannerFile(e.target.files?.[0] ?? null)}
-                          className="block w-full text-xs text-slate-200"
-                        />
-                        <button
-                          type="button"
-                          className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                          disabled={!token || !mainSneakers || !mainSneakersBannerFile || catalogBusy}
-                          onClick={async () => {
-                            if (!token || !mainSneakers || !mainSneakersBannerFile) return;
-                            const url = await uploadFile(mainSneakersBannerFile, "catalog/banners");
-                            await updateCatalogNode(mainSneakers.id, { banner_url: url });
-                            setMainSneakersBannerFile(null);
+                          value={mainLabel}
+                          onChange={(e) => {
+                            setMainLabel(e.target.value);
+                            if (!mainSlug.trim()) setMainSlug(slugify(e.target.value));
                           }}
-                        >
-                          Salvar banner
-                        </button>
+                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="Ex.: Acessórios"
+                        />
+                        <input
+                          type="number"
+                          value={mainSort}
+                          onChange={(e) => setMainSort(Number(e.target.value))}
+                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        />
+                        <input
+                          value={mainSlug}
+                          onChange={(e) => setMainSlug(e.target.value)}
+                          className="sm:col-span-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          placeholder="slug (ex.: acessorios)"
+                        />
+                        <div className="sm:col-span-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setMainBannerFile(e.target.files?.[0] ?? null)}
+                            className="block w-full text-xs text-slate-200"
+                          />
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                        disabled={!token || !mainLabel.trim() || catalogBusy}
+                        onClick={async () => {
+                          if (!token) return;
+                          const banner_url = mainBannerFile
+                            ? await uploadFile(mainBannerFile, "catalog/banners")
+                            : null;
+                          await createCatalogNode({
+                            kind: "main",
+                            parent_id: null,
+                            label: mainLabel.trim(),
+                            slug: (mainSlug.trim() || slugify(mainLabel)).trim(),
+                            banner_url,
+                            sort_order: mainSort,
+                          });
+                          setMainLabel("");
+                          setMainSlug("");
+                          setMainSort(10);
+                          setMainBannerFile(null);
+                        }}
+                      >
+                        Criar
+                      </button>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-slate-200">Vestuário</p>
-                        {mainVestuario?.banner_url ? (
-                          <a
-                            href={mainVestuario.banner_url}
-                            target="_blank"
-                            className="text-xs text-slate-300 underline"
+                    <div className="grid gap-2">
+                      {mains.length === 0 ? (
+                        <p className="text-sm text-slate-200">
+                          Nenhuma categoria principal cadastrada ainda.
+                        </p>
+                      ) : (
+                        mains.map((m) => (
+                          <div
+                            key={m.id}
+                            className="rounded-2xl border border-white/10 bg-black/10 p-4"
                           >
-                            ver imagem
-                          </a>
-                        ) : null}
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => setMainVestuarioBannerFile(e.target.files?.[0] ?? null)}
-                          className="block w-full text-xs text-slate-200"
-                        />
-                        <button
-                          type="button"
-                          className="cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                          disabled={!token || !mainVestuario || !mainVestuarioBannerFile || catalogBusy}
-                          onClick={async () => {
-                            if (!token || !mainVestuario || !mainVestuarioBannerFile) return;
-                            const url = await uploadFile(mainVestuarioBannerFile, "catalog/banners");
-                            await updateCatalogNode(mainVestuario.id, { banner_url: url });
-                            setMainVestuarioBannerFile(null);
-                          }}
-                        >
-                          Salvar banner
-                        </button>
-                      </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-200">
+                                  {m.label}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {m.slug} · ordem {m.sort_order ?? 0}
+                                </p>
+                                {m.banner_url ? (
+                                  <a
+                                    href={m.banner_url}
+                                    target="_blank"
+                                    className="mt-2 inline-block text-xs text-slate-300 underline"
+                                  >
+                                    ver banner
+                                  </a>
+                                ) : null}
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                  onClick={() => startEditCatalog(m)}
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                  onClick={() => deleteCatalogNode(m.id)}
+                                  disabled={catalogBusy}
+                                >
+                                  Remover
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1427,16 +1573,34 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                {/* Vestuário */}
+                {/* Subcategorias por categoria principal */}
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
-                      Vestuário · Subcategorias
+                      Subcategorias
                     </p>
-                    <span className="text-xs text-slate-400">{vestSubs.length}</span>
+                    <span className="text-xs text-slate-400">{subcategories.length}</span>
                   </div>
 
                   <div className="mt-4 grid gap-3">
+                    <select
+                      value={manageSubMainId}
+                      onChange={(e) => {
+                        setManageSubMainId(e.target.value);
+                        setVestLabel("");
+                        setVestSlug("");
+                        setVestSort(10);
+                      }}
+                      className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                    >
+                      <option value="">Selecione a categoria principal</option>
+                      {mains.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Criar subcategoria</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -1465,12 +1629,12 @@ export default function AdminPage() {
                       <button
                         type="button"
                         className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                        disabled={!token || !mainVestuario || !vestLabel.trim() || catalogBusy}
+                        disabled={!token || !subMain || !vestLabel.trim() || catalogBusy}
                         onClick={async () => {
-                          if (!token || !mainVestuario) return;
+                          if (!token || !subMain) return;
                           await createCatalogNode({
                             kind: "subcategory",
-                            parent_id: mainVestuario.id,
+                            parent_id: subMain.id,
                             label: vestLabel.trim(),
                             slug: (vestSlug.trim() || slugify(vestLabel)).trim(),
                             sort_order: vestSort,
@@ -1485,7 +1649,7 @@ export default function AdminPage() {
                     </div>
 
                     <div className="grid gap-2">
-                      {vestSubs.map((s) => (
+                      {subcategories.map((s) => (
                         <div key={s.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div>
@@ -1516,14 +1680,30 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Sneakers */}
+                {/* Marcas e linhas (por categoria principal) */}
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
-                      Sneakers · Marcas e Linhas
+                      Marcas e Linhas
                     </p>
                     <span className="text-xs text-slate-400">{brands.length}</span>
                   </div>
+
+                  <select
+                    value={manageBrandMainId}
+                    onChange={(e) => {
+                      setManageBrandMainId(e.target.value);
+                      setLineBrandId("");
+                    }}
+                    className="mt-4 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                  >
+                    <option value="">Selecione a categoria principal</option>
+                    {mains.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
 
                   {/* Criar marca */}
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -1562,13 +1742,13 @@ export default function AdminPage() {
                     <button
                       type="button"
                       className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                      disabled={!token || !mainSneakers || !brandLabel.trim() || !brandLogoFile || catalogBusy}
+                      disabled={!token || !brandMain || !brandLabel.trim() || !brandLogoFile || catalogBusy}
                       onClick={async () => {
-                        if (!token || !mainSneakers || !brandLogoFile) return;
+                        if (!token || !brandMain || !brandLogoFile) return;
                         const logo = await uploadFile(brandLogoFile, "catalog/brand-logos");
                         await createCatalogNode({
                           kind: "brand",
-                          parent_id: mainSneakers.id,
+                          parent_id: brandMain.id,
                           label: brandLabel.trim(),
                           slug: (brandSlug.trim() || slugify(brandLabel)).trim(),
                           logo_url: logo,
