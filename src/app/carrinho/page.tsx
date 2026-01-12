@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 type CartItem = {
   id: string;
   quantity: number;
+  size?: string | null;
   product: {
     id: string;
     name: string;
@@ -216,6 +217,11 @@ export default function CarrinhoPage() {
                         <p className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-300">
                           {priceLabel(p?.price_cents ?? null)}
                         </p>
+                        {it.size ? (
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                            Tamanho: {it.size}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 

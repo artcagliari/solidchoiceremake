@@ -6,18 +6,22 @@ import { useState } from "react";
 
 export function AddToCartButton({
   productId,
+  size,
   className,
   children,
+  disabled,
 }: {
   productId: string;
+  size?: string | null;
   className?: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const onClick = async () => {
-    if (loading) return;
+    if (loading || disabled) return;
     setLoading(true);
     try {
       const { data } = await supabase.auth.getSession();
@@ -33,7 +37,7 @@ export function AddToCartButton({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ product_id: productId, quantity: 1 }),
+        body: JSON.stringify({ product_id: productId, quantity: 1, size: size ?? null }),
       });
 
       if (!res.ok) {
@@ -51,7 +55,7 @@ export function AddToCartButton({
   };
 
   return (
-    <button type="button" onClick={onClick} className={className} disabled={loading}>
+    <button type="button" onClick={onClick} className={className} disabled={loading || disabled}>
       {loading ? "..." : children}
     </button>
   );

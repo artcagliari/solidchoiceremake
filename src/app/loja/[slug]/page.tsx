@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { ClientActions } from "./ClientActions";
 import { ClientGallery } from "./ClientGallery";
+import { AddToCartWithSize } from "../AddToCartWithSize";
 
 export const dynamic = "force-dynamic";
 
@@ -140,11 +140,9 @@ export default async function ProductPage({
                       Tamanhos
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
+                      {/* seleção de tamanho é feita no ClientActions */}
                       {sizes.map((s) => (
-                        <span
-                          key={s}
-                          className="badge rounded-full px-3 py-1 text-[11px]"
-                        >
+                        <span key={s} className="badge rounded-full px-3 py-1 text-[11px]">
                           {s}
                         </span>
                       ))}
@@ -173,7 +171,13 @@ export default async function ProductPage({
             ) : null}
 
             <div className="mt-6">
-              <ClientActions productId={product.id} />
+              <AddToCartWithSize
+                productId={product.id}
+                sizes={sizes}
+                buttonClassName="cta w-full rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                selectClassName="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                buttonText="Adicionar à cotação"
+              />
             </div>
           </div>
         </div>

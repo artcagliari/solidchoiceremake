@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
     const { data: items, error: itemsErr } = await supabaseAdmin
       .from("cart_items")
-      .select("id,quantity,product:products(id,name,price_cents)")
+      .select("id,quantity,size,product:products(id,name,price_cents)")
       .eq("cart_id", cartId);
     if (itemsErr) throw new Error(itemsErr.message);
 
@@ -55,10 +55,12 @@ export async function POST(req: Request) {
       const p = it.product as unknown as { id: string; name: string; price_cents: number | null };
       const qty = Number(it.quantity ?? 0);
       const price = typeof p.price_cents === "number" ? p.price_cents : 0;
+      const size = (it as unknown as { size?: string | null }).size ?? null;
       return {
         cart_item_id: it.id as string,
         product_id: p.id,
         name: p.name,
+        size,
         quantity: qty,
         unit_price_cents: price,
         line_total_cents: price * qty,
@@ -90,6 +92,7 @@ export async function POST(req: Request) {
     const orderItemsPayloadFull = normalized.map((x) => ({
       order_id,
       product_id: x.product_id,
+      size: x.size,
       quantity: x.quantity,
       unit_price_cents: x.unit_price_cents,
       line_total_cents: x.line_total_cents,
@@ -105,20 +108,35 @@ export async function POST(req: Request) {
       // fallback para schemas mais simples (sem unit_price_cents/line_total_cents)
       const msg = errFull.message || "";
       const isMissingCols =
-        msg.includes("line_total_cents") || msg.includes("unit_price_cents");
+        msg.includes("line_total_cents") || msg.includes("unit_price_cents") || msg.includes("size");
 
       if (!isMissingCols) throw new Error(errFull.message);
 
-      const orderItemsPayloadMinimal = normalized.map((x) => ({
+      // tenta primeiro um payload "intermediário" com size (se existir) e sem preços
+      const orderItemsPayloadMid = normalized.map((x) => ({
         order_id,
         product_id: x.product_id,
+        size: x.size,
         quantity: x.quantity,
       }));
 
-      const { error: errMin } = await supabaseAdmin
+      const { error: errMid } = await supabaseAdmin
         .from("order_items")
-        .insert(orderItemsPayloadMinimal);
-      if (errMin) throw new Error(errMin.message);
+        .insert(orderItemsPayloadMid);
+      if (errMid) {
+        const msg2 = errMid.message || "";
+        const isMissingSize = msg2.includes("size");
+        if (!isMissingSize) throw new Error(errMid.message);
+        const orderItemsPayloadMinimal = normalized.map((x) => ({
+          order_id,
+          product_id: x.product_id,
+          quantity: x.quantity,
+        }));
+        const { error: errMin } = await supabaseAdmin
+          .from("order_items")
+          .insert(orderItemsPayloadMinimal);
+        if (errMin) throw new Error(errMin.message);
+      }
     }
 
     // limpa carrinho
@@ -138,12 +156,12 @@ export async function POST(req: Request) {
       `Pedido: ${order_id}`,
       "",
       "Itens:",
-      ...normalized.map(
-        (x) =>
-          `- ${x.name} x${x.quantity} (${formatCurrency(x.unit_price_cents)}) = ${formatCurrency(
-            x.line_total_cents
-          )}`
-      ),
+      ...normalized.map((x) => {
+        const sizePart = x.size ? ` · Tam: ${x.size}` : "";
+        return `- ${x.name}${sizePart} x${x.quantity} (${formatCurrency(x.unit_price_cents)}) = ${formatCurrency(
+          x.line_total_cents
+        )}`;
+      }),
       "",
       `Total: ${formatCurrency(total_cents)}`,
       "",

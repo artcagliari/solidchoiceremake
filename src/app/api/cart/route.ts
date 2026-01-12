@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabaseAdmin
       .from("cart_items")
       .select(
-        "id,quantity,product:products(id,name,price_cents,hero_image,slug,category)"
+        "id,quantity,size,product:products(id,name,price_cents,hero_image,slug,category)"
       )
       .eq("cart_id", cartId)
       .order("created_at", { ascending: false });
@@ -77,9 +77,16 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       product_id?: string;
       quantity?: number;
+      size?: string | null;
     };
     const product_id = body.product_id;
     const quantity = typeof body.quantity === "number" ? body.quantity : 1;
+    const size =
+      typeof body.size === "string"
+        ? body.size.trim() || null
+        : body.size === null
+        ? null
+        : null;
 
     if (!product_id) {
       return NextResponse.json({ error: "product_id obrigatório" }, { status: 400 });
@@ -93,12 +100,13 @@ export async function POST(req: Request) {
 
     const cartId = await ensureCart(auth.user.id);
 
-    const { data: existing, error: findErr } = await supabaseAdmin
+    let find = supabaseAdmin
       .from("cart_items")
       .select("id,quantity")
       .eq("cart_id", cartId)
-      .eq("product_id", product_id)
-      .maybeSingle();
+      .eq("product_id", product_id);
+    find = size === null ? find.is("size", null) : find.eq("size", size);
+    const { data: existing, error: findErr } = await find.maybeSingle();
 
     if (findErr) throw new Error(findErr.message);
 
@@ -114,7 +122,7 @@ export async function POST(req: Request) {
 
     const { data: created, error: insErr } = await supabaseAdmin
       .from("cart_items")
-      .insert({ cart_id: cartId, product_id, quantity })
+      .insert({ cart_id: cartId, product_id, quantity, size })
       .select("id,quantity")
       .single();
 

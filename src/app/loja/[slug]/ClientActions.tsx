@@ -4,12 +4,20 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function ClientActions({ productId }: { productId: string }) {
+export function ClientActions({
+  productId,
+  size,
+  disabled,
+}: {
+  productId: string;
+  size?: string | null;
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const addToCart = async () => {
-    if (loading) return;
+    if (loading || disabled) return;
     setLoading(true);
     try {
       const { data } = await supabase.auth.getSession();
@@ -25,7 +33,7 @@ export function ClientActions({ productId }: { productId: string }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ product_id: productId, quantity: 1 }),
+        body: JSON.stringify({ product_id: productId, quantity: 1, size: size ?? null }),
       });
 
       if (!res.ok) {
@@ -47,7 +55,7 @@ export function ClientActions({ productId }: { productId: string }) {
       type="button"
       onClick={addToCart}
       className="cta w-full rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-      disabled={loading}
+      disabled={loading || disabled}
     >
       {loading ? "Adicionando..." : "Adicionar à cotação"}
     </button>

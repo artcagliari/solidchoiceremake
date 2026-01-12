@@ -1,0 +1,60 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { AddToCartButton } from "./AddToCartButton";
+
+export function AddToCartWithSize({
+  productId,
+  sizes,
+  buttonClassName,
+  selectClassName,
+  buttonText = "Adicionar",
+}: {
+  productId: string;
+  sizes?: string[] | null;
+  buttonClassName: string;
+  selectClassName?: string;
+  buttonText?: string;
+}) {
+  const options = useMemo(
+    () => (Array.isArray(sizes) ? sizes.map((s) => String(s).trim()).filter(Boolean) : []),
+    [sizes]
+  );
+  const mustChoose = options.length > 0;
+  const [size, setSize] = useState<string>("");
+
+  return (
+    <div className="space-y-2">
+      {mustChoose ? (
+        <select
+          value={size}
+          onChange={(e) => setSize(e.target.value)}
+          className={
+            selectClassName ??
+            "w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-slate-200 outline-none"
+          }
+        >
+          <option value="">Selecione o tamanho</option>
+          {options.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      ) : null}
+
+      <AddToCartButton
+        productId={productId}
+        size={mustChoose ? (size || null) : null}
+        className={buttonClassName}
+        disabled={mustChoose && !size}
+      >
+        {buttonText}
+      </AddToCartButton>
+      {mustChoose && !size ? (
+        <p className="text-[11px] text-slate-300">Escolha um tamanho para adicionar.</p>
+      ) : null}
+    </div>
+  );
+}
+
