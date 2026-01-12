@@ -534,7 +534,7 @@ export default async function LojaPage({
                           <Link
                             key={b.id}
                             href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "sneakers")}&brand=${encodeURIComponent(b.slug)}`}
-                            className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border bg-black/20 transition ${
+                            className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-3xl border bg-black/20 p-4 transition ${
                               active
                                 ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
                                 : "border-white/10 hover:border-white/20"
@@ -546,15 +546,15 @@ export default async function LojaPage({
                               <img
                                 src={logo}
                                 alt={b.label}
-                                className="h-10 w-10 object-contain opacity-90"
+                                className="h-16 w-16 object-contain opacity-95"
                               />
                             ) : (
                               <Image
                                 src={logo}
                                 alt={b.label}
-                                width={44}
-                                height={44}
-                                className="opacity-90"
+                                width={72}
+                                height={72}
+                                className="opacity-95"
                               />
                             )}
                           </Link>
@@ -604,7 +604,7 @@ export default async function LojaPage({
                     </div>
                   ) : null}
 
-                  {/* Produtos */}
+                  {/* Produtos: só aparecem depois de escolher a Linha */}
                   {brandNode && lineNode ? (
                     (() => {
                       const all = productsByLine.get(lineNode.id) ?? [];
@@ -622,33 +622,8 @@ export default async function LojaPage({
                       );
                     })()
                   ) : brandNode ? (
-                    <div className="mt-8 space-y-10">
-                      {lineNodes.map((l) => {
-                        const all = productsByLine.get(l.id) ?? [];
-                        const products = all.slice(0, 5);
-                        const canShowMore = all.length > 5;
-                        if (all.length === 0) return null;
-                        return (
-                          <section key={l.id} className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
-                                {l.label}
-                              </h2>
-                              {canShowMore ? (
-                                <Link
-                                  href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "sneakers")}&brand=${encodeURIComponent(brandNode.slug)}&line=${encodeURIComponent(l.slug)}`}
-                                  className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-                                >
-                                  Ver mais
-                                </Link>
-                              ) : null}
-                            </div>
-                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                              {products.map(renderProductCard)}
-                            </div>
-                          </section>
-                        );
-                      })}
+                    <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 px-6 py-6 text-sm text-slate-200">
+                      Agora escolha uma <b>Linha</b> para ver os modelos.
                     </div>
                   ) : null}
                 </>
@@ -674,14 +649,14 @@ export default async function LojaPage({
                     ) : null}
                   </div>
 
-                  <div className="mt-5 grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
+                  <div className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
                     {brands.map((b) => {
                       const active = selectedBrand === b;
                       return (
                         <Link
                           key={b}
                           href={`/loja?main=sneakers&brand=${encodeURIComponent(b)}`}
-                          className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border bg-black/20 transition ${
+                          className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-3xl border bg-black/20 p-4 transition ${
                             active
                               ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
                               : "border-white/10 hover:border-white/20"
@@ -689,7 +664,13 @@ export default async function LojaPage({
                           aria-label={b}
                           title={b}
                         >
-                          <Image src={resolveBrandLogo(b)} alt={b} width={44} height={44} className="opacity-90" />
+                          <Image
+                            src={resolveBrandLogo(b)}
+                            alt={b}
+                            width={72}
+                            height={72}
+                            className="opacity-95"
+                          />
                         </Link>
                       );
                     })}
@@ -698,39 +679,25 @@ export default async function LojaPage({
               </>
             )}
 
-            {visibleBrands.length === 0 ? (
-              <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
-                Nenhum sneaker cadastrado ainda.
+            {/* No fallback antigo, só mostra produtos depois de escolher a marca */}
+            {selectedBrand ? (
+              <div className="mt-8 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
+                    {selectedBrand}
+                  </h2>
+                  <Link
+                    href="/loja?main=sneakers"
+                    className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                  >
+                    Trocar marca
+                  </Link>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {(byBrand.get(selectedBrand) ?? []).map(renderProductCard)}
+                </div>
               </div>
-            ) : (
-              <div className="mt-8 space-y-10">
-                {visibleBrands.map((b) => {
-                  const all = byBrand.get(b) ?? [];
-                  const products = selectedBrand ? all : all.slice(0, 5);
-                  const canShowMore = !selectedBrand && all.length > 5;
-                  return (
-                    <section key={b} className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
-                          {b}
-                        </h2>
-                        {canShowMore ? (
-                          <Link
-                            href={`/loja?main=sneakers&brand=${encodeURIComponent(b)}`}
-                            className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-                          >
-                            Ver mais
-                          </Link>
-                        ) : null}
-                      </div>
-                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        {products.map(renderProductCard)}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-            )}
+            ) : null}
           </>
         ) : null}
 
