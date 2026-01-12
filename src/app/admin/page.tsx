@@ -1831,8 +1831,13 @@ export default function AdminPage() {
                               <input
                                 value={vestBrandLabel}
                                 onChange={(e) => {
-                                  setVestBrandLabel(e.target.value);
-                                  if (!vestBrandSlug.trim()) setVestBrandSlug(slugify(e.target.value));
+                                  const nextLabel = e.target.value;
+                                  setVestBrandLabel(nextLabel);
+                                  if (!vestBrandSlug.trim()) {
+                                    const base = slugify(nextLabel);
+                                    const prefix = vestBrandSub?.slug ? `vest-${vestBrandSub.slug}-` : "vest-";
+                                    setVestBrandSlug(`${prefix}${base}`.replace(/-+/g, "-"));
+                                  }
                                 }}
                                 className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
                                 placeholder="Ex.: Nike"
@@ -1856,11 +1861,14 @@ export default function AdminPage() {
                               disabled={!token || !vestBrandSub || !vestBrandLabel.trim() || catalogBusy}
                               onClick={async () => {
                                 if (!token || !vestBrandSub) return;
+                                const base = slugify(vestBrandLabel);
+                                const prefix = vestBrandSub.slug ? `vest-${vestBrandSub.slug}-` : "vest-";
+                                const computedSlug = `${prefix}${base}`.replace(/-+/g, "-");
                                 await createCatalogNode({
                                   kind: "clothing_brand",
                                   parent_id: vestBrandSub.id,
                                   label: vestBrandLabel.trim(),
-                                  slug: (vestBrandSlug.trim() || slugify(vestBrandLabel)).trim(),
+                                  slug: (vestBrandSlug.trim() || computedSlug).trim(),
                                   sort_order: vestBrandSort,
                                 });
                                 setVestBrandLabel("");
