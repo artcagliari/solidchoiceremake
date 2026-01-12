@@ -29,7 +29,7 @@ type Product = {
 
 type CatalogNode = {
   id: string;
-  kind: "main" | "subcategory" | "brand" | "line";
+  kind: "main" | "subcategory" | "brand" | "line" | "clothing_brand";
   parent_id: string | null;
   label: string;
   slug: string;
@@ -158,6 +158,7 @@ export default function AdminPage() {
   const [catalogBrandId, setCatalogBrandId] = useState<string>("");
   const [catalogLineId, setCatalogLineId] = useState<string>("");
   const [catalogVestSubId, setCatalogVestSubId] = useState<string>("");
+  const [catalogVestBrandId, setCatalogVestBrandId] = useState<string>("");
 
   // Catalog editing (simplificado por seções)
   const [catalogBusy, setCatalogBusy] = useState(false);
@@ -176,6 +177,12 @@ export default function AdminPage() {
   const [vestLabel, setVestLabel] = useState("");
   const [vestSlug, setVestSlug] = useState("");
   const [vestSort, setVestSort] = useState<number>(10);
+
+  // Vestuário: marcas por subcategoria (roupa)
+  const [vestBrandSubId, setVestBrandSubId] = useState<string>("");
+  const [vestBrandLabel, setVestBrandLabel] = useState("");
+  const [vestBrandSlug, setVestBrandSlug] = useState("");
+  const [vestBrandSort, setVestBrandSort] = useState<number>(10);
 
   // Sneakers: marca
   const [brandLabel, setBrandLabel] = useState("");
@@ -353,7 +360,7 @@ export default function AdminPage() {
   };
 
   const createCatalogNode = async (payload: {
-    kind: "main" | "subcategory" | "brand" | "line";
+    kind: "main" | "subcategory" | "brand" | "line" | "clothing_brand";
     parent_id: string | null;
     label: string;
     slug: string;
@@ -605,19 +612,30 @@ export default function AdminPage() {
         setCatalogLineId(node.id);
         setCatalogBrandId(node.parent_id ?? "");
         setCatalogVestSubId("");
+        setCatalogVestBrandId("");
       } else if (node?.kind === "subcategory") {
         const mainSlug = findMainSlugForNode(node.id) ?? "vestuario";
         setCatalogMain(mainSlug);
         setCatalogVestSubId(node.id);
+        // inferir marca do vestuário pelo label (se existir)
+        const candidates = catalog.filter(
+          (n) => n.kind === "clothing_brand" && n.parent_id === node.id
+        );
+        const match = candidates.find(
+          (n) => (n.label ?? "").trim().toLowerCase() === (p.brand ?? "").trim().toLowerCase()
+        );
+        setCatalogVestBrandId(match?.id ?? "");
         setCatalogBrandId("");
         setCatalogLineId("");
       } else {
         setCatalogLineId("");
         setCatalogVestSubId("");
+        setCatalogVestBrandId("");
       }
     } else {
       setCatalogLineId("");
       setCatalogVestSubId("");
+      setCatalogVestBrandId("");
     }
   };
 
@@ -678,8 +696,9 @@ export default function AdminPage() {
       } else {
         const subNode = catalogVestSubId ? findNodeById(catalogVestSubId) : null;
         derivedCategory = subNode?.label ?? selectedMainNode?.label ?? "Vestuário";
-        // Em mains sem Marcas/Linhas (ex.: Vestuário), a marca é um campo normal do produto
-        derivedBrand = brand.trim() || "Solid Choice";
+        // Vestuário: marca vem do catálogo (clothing_brand) por subcategoria
+        const vestBrandNode = catalogVestBrandId ? findNodeById(catalogVestBrandId) : null;
+        derivedBrand = vestBrandNode?.label ?? "Solid Choice";
         derivedCatalogNodeId = catalogVestSubId || null;
       }
 
@@ -896,6 +915,7 @@ export default function AdminPage() {
                         const next = String(e.target.value);
                         setCatalogMain(next);
                         setCatalogVestSubId("");
+                        setCatalogVestBrandId("");
                         setCatalogBrandId("");
                         setCatalogLineId("");
                       }}
@@ -917,23 +937,52 @@ export default function AdminPage() {
                   </label>
 
                   {!selectedMainHasBrands ? (
-                    <label className="block">
-                      <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                        Subcategoria
-                      </span>
-                      <select
-                        value={catalogVestSubId}
-                        onChange={(e) => setCatalogVestSubId(e.target.value)}
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                      >
-                        <option value="">(sem)</option>
-                        {selectedMainSubcategories.map((n) => (
+                    <>
+                      <label className="block">
+                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                          Subcategoria (roupa)
+                        </span>
+                        <select
+                          value={catalogVestSubId}
+                          onChange={(e) => {
+                            setCatalogVestSubId(e.target.value);
+                            setCatalogVestBrandId("");
+                          }}
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                        >
+                          <option value="">(sem)</option>
+                          {selectedMainSubcategories.map((n) => (
                             <option key={n.id} value={n.id}>
                               {n.label}
                             </option>
                           ))}
-                      </select>
-                    </label>
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                          Marca (Vestuário)
+                        </span>
+                        <select
+                          value={catalogVestBrandId}
+                          onChange={(e) => setCatalogVestBrandId(e.target.value)}
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none disabled:opacity-60"
+                          disabled={!catalogVestSubId}
+                        >
+                          <option value="">(sem)</option>
+                          {catalog
+                            .filter(
+                              (n) => n.kind === "clothing_brand" && n.parent_id === catalogVestSubId
+                            )
+                            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                            .map((n) => (
+                              <option key={n.id} value={n.id}>
+                                {n.label}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    </>
                   ) : (
                     <>
                       <label className="block">
@@ -981,23 +1030,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Marca do produto (apenas para mains sem Marcas/Linhas, ex.: Vestuário) */}
-              {!selectedMainHasBrands ? (
-                <label className="block">
-                  <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
-                    Marca (ex.: Nike)
-                  </span>
-                  <input
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 outline-none"
-                    placeholder="Ex.: Nike"
-                  />
-                  <p className="mt-2 text-xs text-slate-400">
-                    Essa marca é usada no filtro do Vestuário. Em Sneakers, a marca vem do catálogo.
-                  </p>
-                </label>
-              ) : null}
+              {/* Marca manual removida: Vestuário agora usa Marca por Subcategoria (clothing_brand) */}
 
               <label className="block">
                 <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
@@ -1406,6 +1439,17 @@ export default function AdminPage() {
               ? catalog.some((n) => n.kind === "brand" && n.parent_id === subMain.id)
               : false;
 
+            const vestBrandSub =
+              catalog.find((n) => n.kind === "subcategory" && n.id === vestBrandSubId) ??
+              subcategories[0] ??
+              null;
+
+            const vestBrandsForSub = vestBrandSub
+              ? catalog
+                  .filter((n) => n.kind === "clothing_brand" && n.parent_id === vestBrandSub.id)
+                  .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+              : [];
+
             const brands = brandMain
               ? catalog
                   .filter((n) => n.kind === "brand" && n.parent_id === brandMain.id)
@@ -1752,6 +1796,125 @@ export default function AdminPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Marcas do Vestuário (por subcategoria) */}
+                    {!subMainHasBrands && subcategories.length ? (
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                          Vestuário · Marcas (por subcategoria)
+                        </p>
+
+                        <div className="mt-3 grid gap-3">
+                          <select
+                            value={vestBrandSubId}
+                            onChange={(e) => {
+                              setVestBrandSubId(e.target.value);
+                              setVestBrandLabel("");
+                              setVestBrandSlug("");
+                              setVestBrandSort(10);
+                            }}
+                            className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                          >
+                            <option value="">Selecione a subcategoria (roupa)</option>
+                            {subcategories.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.label}
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                              Criar marca de vestuário
+                            </p>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <input
+                                value={vestBrandLabel}
+                                onChange={(e) => {
+                                  setVestBrandLabel(e.target.value);
+                                  if (!vestBrandSlug.trim()) setVestBrandSlug(slugify(e.target.value));
+                                }}
+                                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                                placeholder="Ex.: Nike"
+                              />
+                              <input
+                                type="number"
+                                value={vestBrandSort}
+                                onChange={(e) => setVestBrandSort(Number(e.target.value))}
+                                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                              />
+                              <input
+                                value={vestBrandSlug}
+                                onChange={(e) => setVestBrandSlug(e.target.value)}
+                                className="sm:col-span-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                                placeholder="slug (ex.: vest-bermuda-nike)"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
+                              disabled={!token || !vestBrandSub || !vestBrandLabel.trim() || catalogBusy}
+                              onClick={async () => {
+                                if (!token || !vestBrandSub) return;
+                                await createCatalogNode({
+                                  kind: "clothing_brand",
+                                  parent_id: vestBrandSub.id,
+                                  label: vestBrandLabel.trim(),
+                                  slug: (vestBrandSlug.trim() || slugify(vestBrandLabel)).trim(),
+                                  sort_order: vestBrandSort,
+                                });
+                                setVestBrandLabel("");
+                                setVestBrandSlug("");
+                                setVestBrandSort(10);
+                              }}
+                            >
+                              Criar marca
+                            </button>
+                          </div>
+
+                          <div className="grid gap-2">
+                            {vestBrandsForSub.length === 0 ? (
+                              <p className="text-sm text-slate-200">
+                                Nenhuma marca cadastrada para {vestBrandSub?.label ?? "essa subcategoria"} ainda.
+                              </p>
+                            ) : (
+                              vestBrandsForSub.map((b) => (
+                                <div
+                                  key={b.id}
+                                  className="rounded-2xl border border-white/10 bg-black/10 p-4"
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-200">{b.label}</p>
+                                      <p className="mt-1 text-xs text-slate-400">
+                                        {b.slug} · ordem {b.sort_order ?? 0}
+                                      </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                        onClick={() => startEditCatalog(b)}
+                                      >
+                                        Editar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                                        onClick={() => deleteCatalogNode(b.id)}
+                                        disabled={catalogBusy}
+                                      >
+                                        Remover
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
