@@ -56,23 +56,26 @@ type Order = {
 const BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_BUCKET ||
   process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ||
+  "products-images";
+
+// Prefixo base dentro do bucket (ex.: "products" -> products-images/products/...)
+const STORAGE_PREFIX =
+  process.env.NEXT_PUBLIC_SUPABASE_STORAGE_PREFIX ||
+  process.env.NEXT_PUBLIC_SUPABASE_PATH_PREFIX ||
   "products";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
 function normalizePublicStorageUrl(url?: string | null) {
   if (!url) return url;
-  // Corrige URLs antigas no formato: /storage/v1/object/<bucket>/...
-  const needle = `/storage/v1/object/${BUCKET}/`;
-  if (url.includes(needle)) {
-    return url.replace(needle, `/storage/v1/object/public/${BUCKET}/`);
-  }
-  // Fallback: se por algum motivo veio relativo, monta a pública.
-  if (SUPABASE_URL && url.startsWith(`/storage/v1/object/${BUCKET}/`)) {
-    return `${SUPABASE_URL}${url.replace(
-      `/storage/v1/object/${BUCKET}/`,
-      `/storage/v1/object/public/${BUCKET}/`
-    )}`;
+  // Corrige URLs no formato: /storage/v1/object/<bucket>/...  -> /public/
+  // Mantém compat com buckets antigos (ex.: "products").
+  const bucketsToFix = new Set([BUCKET, "products", "products-images"]);
+  for (const b of bucketsToFix) {
+    const needle = `/storage/v1/object/${b}/`;
+    if (url.includes(needle)) {
+      return url.replace(needle, `/storage/v1/object/public/${b}/`);
+    }
   }
   return url;
 }
@@ -624,7 +627,10 @@ export default function AdminPage() {
 
   const uploadFile = async (file: File, folder: string) => {
     const ext = file.name.split(".").pop() || "jpg";
-    const path = `${folder}/${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
+    const safeFolder = folder.replace(/^\/+|\/+$/g, "");
+    const safePrefix = STORAGE_PREFIX.replace(/^\/+|\/+$/g, "");
+    const base = safePrefix ? `${safePrefix}/${safeFolder}` : safeFolder;
+    const path = `${base}/${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
 
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
       upsert: true,

@@ -9,13 +9,16 @@ export const dynamic = "force-dynamic";
 const STORAGE_BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_BUCKET ||
   process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ||
-  "products";
+  "products-images";
 
 function normalizePublicStorageUrl(url?: string | null) {
   if (!url) return url;
-  const needle = `/storage/v1/object/${STORAGE_BUCKET}/`;
-  if (url.includes(needle)) {
-    return url.replace(needle, `/storage/v1/object/public/${STORAGE_BUCKET}/`);
+  const bucketsToFix = new Set([STORAGE_BUCKET, "products", "products-images"]);
+  for (const b of bucketsToFix) {
+    const needle = `/storage/v1/object/${b}/`;
+    if (url.includes(needle)) {
+      return url.replace(needle, `/storage/v1/object/public/${b}/`);
+    }
   }
   return url;
 }
