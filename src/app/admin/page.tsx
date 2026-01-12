@@ -179,7 +179,6 @@ export default function AdminPage() {
   const [vestSort, setVestSort] = useState<number>(10);
 
   // Vestuário: marcas por subcategoria (roupa)
-  const [vestBrandSubId, setVestBrandSubId] = useState<string>("");
   const [vestBrandLabel, setVestBrandLabel] = useState("");
   const [vestBrandSlug, setVestBrandSlug] = useState("");
   const [vestBrandSort, setVestBrandSort] = useState<number>(10);
@@ -617,10 +616,12 @@ export default function AdminPage() {
         const mainSlug = findMainSlugForNode(node.id) ?? "vestuario";
         setCatalogMain(mainSlug);
         setCatalogVestSubId(node.id);
-        // inferir marca do vestuário pelo label (se existir)
-        const candidates = catalog.filter(
-          (n) => n.kind === "clothing_brand" && n.parent_id === node.id
-        );
+        // inferir marca do vestuário pelo label (se existir) - marcas são do MAIN (vestuário)
+        const mainNode =
+          catalog.find((n) => n.kind === "main" && n.slug === mainSlug) ?? null;
+        const candidates = mainNode
+          ? catalog.filter((n) => n.kind === "clothing_brand" && n.parent_id === mainNode.id)
+          : [];
         const match = candidates.find(
           (n) => (n.label ?? "").trim().toLowerCase() === (p.brand ?? "").trim().toLowerCase()
         );
@@ -963,24 +964,24 @@ export default function AdminPage() {
                         <span className="text-xs uppercase tracking-[0.12em] text-slate-300">
                           Marca (Vestuário)
                         </span>
-                        <select
-                          value={catalogVestBrandId}
-                          onChange={(e) => setCatalogVestBrandId(e.target.value)}
-                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none disabled:opacity-60"
-                          disabled={!catalogVestSubId}
-                        >
-                          <option value="">(sem)</option>
-                          {catalog
-                            .filter(
-                              (n) => n.kind === "clothing_brand" && n.parent_id === catalogVestSubId
-                            )
-                            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                            .map((n) => (
-                              <option key={n.id} value={n.id}>
-                                {n.label}
-                              </option>
-                            ))}
-                        </select>
+                  <select
+                    value={catalogVestBrandId}
+                    onChange={(e) => setCatalogVestBrandId(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none disabled:opacity-60"
+                    disabled={!selectedMainNode}
+                  >
+                    <option value="">(sem)</option>
+                    {catalog
+                      .filter(
+                        (n) => n.kind === "clothing_brand" && n.parent_id === selectedMainNode?.id
+                      )
+                      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                      .map((n) => (
+                        <option key={n.id} value={n.id}>
+                          {n.label}
+                        </option>
+                      ))}
+                  </select>
                       </label>
                     </>
                   ) : (
@@ -1439,14 +1440,9 @@ export default function AdminPage() {
               ? catalog.some((n) => n.kind === "brand" && n.parent_id === subMain.id)
               : false;
 
-            const vestBrandSub =
-              catalog.find((n) => n.kind === "subcategory" && n.id === vestBrandSubId) ??
-              subcategories[0] ??
-              null;
-
-            const vestBrandsForSub = vestBrandSub
+            const vestBrandsForMain = subMain
               ? catalog
-                  .filter((n) => n.kind === "clothing_brand" && n.parent_id === vestBrandSub.id)
+                  .filter((n) => n.kind === "clothing_brand" && n.parent_id === subMain.id)
                   .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
               : [];
 
@@ -1801,28 +1797,10 @@ export default function AdminPage() {
                     {!subMainHasBrands && subcategories.length ? (
                       <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
                         <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                          Vestuário · Marcas (por subcategoria)
+                          Vestuário · Marcas
                         </p>
 
                         <div className="mt-3 grid gap-3">
-                          <select
-                            value={vestBrandSubId}
-                            onChange={(e) => {
-                              setVestBrandSubId(e.target.value);
-                              setVestBrandLabel("");
-                              setVestBrandSlug("");
-                              setVestBrandSort(10);
-                            }}
-                            className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
-                          >
-                            <option value="">Selecione a subcategoria (roupa)</option>
-                            {subcategories.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.label}
-                              </option>
-                            ))}
-                          </select>
-
                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
                               Criar marca de vestuário
@@ -1835,7 +1813,7 @@ export default function AdminPage() {
                                   setVestBrandLabel(nextLabel);
                                   if (!vestBrandSlug.trim()) {
                                     const base = slugify(nextLabel);
-                                    const prefix = vestBrandSub?.slug ? `vest-${vestBrandSub.slug}-` : "vest-";
+                                    const prefix = subMain?.slug ? `${subMain.slug}-brand-` : "vestuario-brand-";
                                     setVestBrandSlug(`${prefix}${base}`.replace(/-+/g, "-"));
                                   }
                                 }}
@@ -1858,15 +1836,15 @@ export default function AdminPage() {
                             <button
                               type="button"
                               className="mt-3 cta rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                              disabled={!token || !vestBrandSub || !vestBrandLabel.trim() || catalogBusy}
+                              disabled={!token || !subMain || !vestBrandLabel.trim() || catalogBusy}
                               onClick={async () => {
-                                if (!token || !vestBrandSub) return;
+                                if (!token || !subMain) return;
                                 const base = slugify(vestBrandLabel);
-                                const prefix = vestBrandSub.slug ? `vest-${vestBrandSub.slug}-` : "vest-";
+                                const prefix = subMain.slug ? `${subMain.slug}-brand-` : "vestuario-brand-";
                                 const computedSlug = `${prefix}${base}`.replace(/-+/g, "-");
                                 await createCatalogNode({
                                   kind: "clothing_brand",
-                                  parent_id: vestBrandSub.id,
+                                  parent_id: subMain.id,
                                   label: vestBrandLabel.trim(),
                                   slug: (vestBrandSlug.trim() || computedSlug).trim(),
                                   sort_order: vestBrandSort,
@@ -1881,12 +1859,12 @@ export default function AdminPage() {
                           </div>
 
                           <div className="grid gap-2">
-                            {vestBrandsForSub.length === 0 ? (
+                            {vestBrandsForMain.length === 0 ? (
                               <p className="text-sm text-slate-200">
-                                Nenhuma marca cadastrada para {vestBrandSub?.label ?? "essa subcategoria"} ainda.
+                                Nenhuma marca cadastrada para {subMain?.label ?? "Vestuário"} ainda.
                               </p>
                             ) : (
-                              vestBrandsForSub.map((b) => (
+                              vestBrandsForMain.map((b) => (
                                 <div
                                   key={b.id}
                                   className="rounded-2xl border border-white/10 bg-black/10 p-4"
