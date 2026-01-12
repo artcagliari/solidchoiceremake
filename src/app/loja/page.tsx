@@ -586,11 +586,7 @@ export default async function LojaPage({
                   {brandNode && lineNode ? (
                     (() => {
                       const all = productsByLine.get(lineNode.id) ?? [];
-                      return all.length === 0 ? (
-                        <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
-                          Nenhum produto cadastrado nesta linha ainda.
-                        </div>
-                      ) : (
+                      return all.length === 0 ? null : (
                         <div className="mt-8 space-y-4">
                           <div className="flex items-center justify-between">
                             <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
@@ -848,9 +844,7 @@ export default async function LojaPage({
 
         {/* Vazio geral quando não há produtos */}
         {!isMainSelected && items.length === 0 ? (
-          <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
-            Nenhum produto cadastrado ainda.
-          </div>
+          null
         ) : null}
       </div>
     </div>
