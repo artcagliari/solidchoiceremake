@@ -58,6 +58,25 @@ const BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ||
   "products";
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+
+function normalizePublicStorageUrl(url?: string | null) {
+  if (!url) return url;
+  // Corrige URLs antigas no formato: /storage/v1/object/<bucket>/...
+  const needle = `/storage/v1/object/${BUCKET}/`;
+  if (url.includes(needle)) {
+    return url.replace(needle, `/storage/v1/object/public/${BUCKET}/`);
+  }
+  // Fallback: se por algum motivo veio relativo, monta a pública.
+  if (SUPABASE_URL && url.startsWith(`/storage/v1/object/${BUCKET}/`)) {
+    return `${SUPABASE_URL}${url.replace(
+      `/storage/v1/object/${BUCKET}/`,
+      `/storage/v1/object/public/${BUCKET}/`
+    )}`;
+  }
+  return url;
+}
+
 function toCents(input: string) {
   const cleaned = input.replace(/[^\d,\.]/g, "").replace(",", ".");
   const value = Number(cleaned);
@@ -321,7 +340,13 @@ export default function AdminPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       const json = (await res.json()) as { items?: CatalogNode[] };
-      setCatalog(Array.isArray(json.items) ? json.items : []);
+      const raw = Array.isArray(json.items) ? json.items : [];
+      const normalized = raw.map((n) => ({
+        ...n,
+        logo_url: normalizePublicStorageUrl(n.logo_url) ?? null,
+        banner_url: normalizePublicStorageUrl(n.banner_url ?? null) ?? null,
+      }));
+      setCatalog(normalized);
     } catch {
       // Se tabela não existir ainda no Supabase, não quebra o admin.
       setCatalog([]);
@@ -616,7 +641,8 @@ export default function AdminPage() {
     }
 
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return data.publicUrl;
+    // Em alguns setups o publicUrl pode vir sem "/public/"; normalizamos aqui.
+    return normalizePublicStorageUrl(data.publicUrl) || data.publicUrl;
   };
 
   const upsertProduct = async () => {

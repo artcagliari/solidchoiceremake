@@ -6,6 +6,20 @@ import { AdminOnlyLink } from "./AdminOnlyLink";
 
 export const dynamic = "force-dynamic";
 
+const STORAGE_BUCKET =
+  process.env.NEXT_PUBLIC_SUPABASE_BUCKET ||
+  process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ||
+  "products";
+
+function normalizePublicStorageUrl(url?: string | null) {
+  if (!url) return url;
+  const needle = `/storage/v1/object/${STORAGE_BUCKET}/`;
+  if (url.includes(needle)) {
+    return url.replace(needle, `/storage/v1/object/public/${STORAGE_BUCKET}/`);
+  }
+  return url;
+}
+
 type Product = {
   id: string;
   name: string;
@@ -45,6 +59,10 @@ export default async function LojaPage({
     .order("created_at", { ascending: false });
 
   const items = (data ?? []) as unknown as Product[];
+  // Normaliza URLs antigas do Storage (sem /public/)
+  for (const p of items) {
+    p.hero_image = normalizePublicStorageUrl(p.hero_image) ?? null;
+  }
 
   const mainRaw = typeof sp?.main === "string" ? sp.main : null;
   const main = mainRaw ? mainRaw.trim().toLowerCase() : null; // sneakers | vestuario
@@ -69,7 +87,11 @@ export default async function LojaPage({
       .from("catalog_nodes")
       .select("id,kind,parent_id,label,slug,logo_url,banner_url,sort_order");
     if (!catError && Array.isArray(catData)) {
-      catalog = catData as unknown as CatalogNode[];
+      catalog = (catData as unknown as CatalogNode[]).map((n) => ({
+        ...n,
+        logo_url: normalizePublicStorageUrl(n.logo_url) ?? null,
+        banner_url: normalizePublicStorageUrl(n.banner_url ?? null) ?? null,
+      }));
       hasCatalog = true;
     }
   } catch {
