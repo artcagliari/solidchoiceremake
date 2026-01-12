@@ -122,7 +122,7 @@ export default function AdminPage() {
 
   const [name, setName] = useState("");
   const [, setCategory] = useState("Calçado");
-  const [, setBrand] = useState("Solid Choice");
+  const [brand, setBrand] = useState("Solid Choice");
   const [badge, setBadge] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("0,00");
