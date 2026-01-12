@@ -9,12 +9,16 @@ export function AddToCartWithSize({
   buttonClassName,
   selectClassName,
   buttonText = "Adicionar",
+  sizeUi = "select",
+  sizesTitle = "Tamanhos",
 }: {
   productId: string;
   sizes?: string[] | null;
   buttonClassName: string;
   selectClassName?: string;
   buttonText?: string;
+  sizeUi?: "select" | "chips";
+  sizesTitle?: string;
 }) {
   const options = useMemo(
     () => (Array.isArray(sizes) ? sizes.map((s) => String(s).trim()).filter(Boolean) : []),
@@ -25,7 +29,7 @@ export function AddToCartWithSize({
 
   return (
     <div className="space-y-2">
-      {mustChoose ? (
+      {mustChoose && sizeUi === "select" ? (
         <select
           value={size}
           onChange={(e) => setSize(e.target.value)}
@@ -41,6 +45,34 @@ export function AddToCartWithSize({
             </option>
           ))}
         </select>
+      ) : null}
+
+      {mustChoose && sizeUi === "chips" ? (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
+            {sizesTitle}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {options.map((s) => {
+              const active = size === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSize(active ? "" : s)}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition ${
+                    active
+                      ? "cta"
+                      : "cta-secondary hover:border-white/20"
+                  }`}
+                  aria-pressed={active}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       ) : null}
 
       <AddToCartButton

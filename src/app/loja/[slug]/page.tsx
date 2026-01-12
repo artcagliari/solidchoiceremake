@@ -132,24 +132,8 @@ export default async function ProductPage({
               </span>
             </div>
 
-            {sizes.length || colors.length ? (
+            {colors.length ? (
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {sizes.length ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-slate-200">
-                      Tamanhos
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {/* seleção de tamanho é feita no ClientActions */}
-                      {sizes.map((s) => (
-                        <span key={s} className="badge rounded-full px-3 py-1 text-[11px]">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
                 {colors.length ? (
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <p className="text-xs uppercase tracking-[0.12em] text-slate-200">
@@ -177,6 +161,8 @@ export default async function ProductPage({
                 buttonClassName="cta w-full rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
                 selectClassName="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
                 buttonText="Adicionar à cotação"
+                sizeUi="chips"
+                sizesTitle="Tamanhos"
               />
             </div>
           </div>
