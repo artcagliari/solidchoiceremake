@@ -56,7 +56,7 @@ type Order = {
 const BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_BUCKET ||
   process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ||
-  "products-images";
+  "product-images";
 
 // Prefixo base dentro do bucket (ex.: "products" -> products-images/products/...)
 const STORAGE_PREFIX =

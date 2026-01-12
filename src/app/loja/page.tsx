@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const STORAGE_BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_BUCKET ||
   process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ||
-  "products-images";
+  "product-images";
 
 function normalizePublicStorageUrl(url?: string | null) {
   if (!url) return url;
