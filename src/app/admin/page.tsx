@@ -53,7 +53,10 @@ type Order = {
   }>;
 };
 
-const BUCKET = process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "products";
+const BUCKET =
+  process.env.NEXT_PUBLIC_SUPABASE_BUCKET ||
+  process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ||
+  "products";
 
 function toCents(input: string) {
   const cleaned = input.replace(/[^\d,\.]/g, "").replace(",", ".");
@@ -602,7 +605,15 @@ export default function AdminPage() {
       upsert: true,
       contentType: file.type || undefined,
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      const raw = error.message || "Falha no upload.";
+      if (raw.toLowerCase().includes("bucket not found")) {
+        throw new Error(
+          `Bucket do Storage não encontrado: "${BUCKET}". Crie esse bucket no Supabase (Storage) e marque como público, ou defina NEXT_PUBLIC_SUPABASE_BUCKET para o bucket correto.`
+        );
+      }
+      throw new Error(raw);
+    }
 
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
     return data.publicUrl;
@@ -639,7 +650,8 @@ export default function AdminPage() {
       } else {
         const subNode = catalogVestSubId ? findNodeById(catalogVestSubId) : null;
         derivedCategory = subNode?.label ?? selectedMainNode?.label ?? "Vestuário";
-        derivedBrand = "Solid Choice";
+        // Em mains sem Marcas/Linhas (ex.: Vestuário), a marca é um campo normal do produto
+        derivedBrand = brand.trim() || "Solid Choice";
         derivedCatalogNodeId = catalogVestSubId || null;
       }
 
@@ -941,7 +953,23 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Marca antiga removida: Sneakers usa Marca do catálogo */}
+              {/* Marca do produto (apenas para mains sem Marcas/Linhas, ex.: Vestuário) */}
+              {!selectedMainHasBrands ? (
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
+                    Marca (ex.: Nike)
+                  </span>
+                  <input
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 outline-none"
+                    placeholder="Ex.: Nike"
+                  />
+                  <p className="mt-2 text-xs text-slate-400">
+                    Essa marca é usada no filtro do Vestuário. Em Sneakers, a marca vem do catálogo.
+                  </p>
+                </label>
+              ) : null}
 
               <label className="block">
                 <span className="text-xs uppercase tracking-[0.12em] text-slate-200">
@@ -1773,19 +1801,25 @@ export default function AdminPage() {
                       disabled={!token || !brandMain || !brandLabel.trim() || !brandLogoFile || catalogBusy}
                       onClick={async () => {
                         if (!token || !brandMain || !brandLogoFile) return;
-                        const logo = await uploadFile(brandLogoFile, "catalog/brand-logos");
-                        await createCatalogNode({
-                          kind: "brand",
-                          parent_id: brandMain.id,
-                          label: brandLabel.trim(),
-                          slug: (brandSlug.trim() || slugify(brandLabel)).trim(),
-                          logo_url: logo,
-                          sort_order: brandSort,
-                        });
-                        setBrandLabel("");
-                        setBrandSlug("");
-                        setBrandSort(10);
-                        setBrandLogoFile(null);
+                        setError(null);
+                        try {
+                          const logo = await uploadFile(brandLogoFile, "catalog/brand-logos");
+                          await createCatalogNode({
+                            kind: "brand",
+                            parent_id: brandMain.id,
+                            label: brandLabel.trim(),
+                            slug: (brandSlug.trim() || slugify(brandLabel)).trim(),
+                            logo_url: logo,
+                            sort_order: brandSort,
+                          });
+                          setBrandLabel("");
+                          setBrandSlug("");
+                          setBrandSort(10);
+                          setBrandLogoFile(null);
+                        } catch (err) {
+                          const msg = err instanceof Error ? err.message : "Erro ao criar marca.";
+                          setError(msg);
+                        }
                       }}
                     >
                       Criar marca
