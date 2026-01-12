@@ -13,14 +13,11 @@ const STORAGE_BUCKET =
 
 function normalizePublicStorageUrl(url?: string | null) {
   if (!url) return url;
-  const bucketsToFix = new Set([STORAGE_BUCKET, "products", "products-images"]);
-  for (const b of bucketsToFix) {
-    const needle = `/storage/v1/object/${b}/`;
-    if (url.includes(needle)) {
-      return url.replace(needle, `/storage/v1/object/public/${b}/`);
-    }
-  }
-  return url;
+  if (url.includes("/storage/v1/object/public/")) return url;
+  return url.replace(
+    /\/storage\/v1\/object\/([^/]+)\//g,
+    "/storage/v1/object/public/$1/"
+  );
 }
 
 type Product = {

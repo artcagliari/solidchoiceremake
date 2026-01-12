@@ -68,16 +68,12 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
 function normalizePublicStorageUrl(url?: string | null) {
   if (!url) return url;
-  // Corrige URLs no formato: /storage/v1/object/<bucket>/...  -> /public/
-  // Mantém compat com buckets antigos (ex.: "products").
-  const bucketsToFix = new Set([BUCKET, "products", "products-images"]);
-  for (const b of bucketsToFix) {
-    const needle = `/storage/v1/object/${b}/`;
-    if (url.includes(needle)) {
-      return url.replace(needle, `/storage/v1/object/public/${b}/`);
-    }
-  }
-  return url;
+  // Corrige URLs no formato: /storage/v1/object/<bucket>/...  -> /storage/v1/object/public/<bucket>/...
+  if (url.includes("/storage/v1/object/public/")) return url;
+  return url.replace(
+    /\/storage\/v1\/object\/([^/]+)\//g,
+    "/storage/v1/object/public/$1/"
+  );
 }
 
 function toCents(input: string) {
