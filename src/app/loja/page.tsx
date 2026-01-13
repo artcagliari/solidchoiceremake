@@ -1055,7 +1055,22 @@ export default async function LojaPage({
             <div className="mt-8 space-y-10">
               {visibleClothingCategories.map((cat) => {
                 const all = clothingByCategory.get(cat) ?? [];
-                const products = selectedCat ? all : all.slice(0, 5);
+                const filteredAll = selectedBrand
+                  ? all.filter(
+                      (p) =>
+                        (p.brand ?? "").trim().toLowerCase() ===
+                        selectedBrand.trim().toLowerCase()
+                    )
+                  : all;
+
+                const searchedAll = q
+                  ? filteredAll.filter((p) =>
+                      (p.name ?? "").toLowerCase().includes(q.toLowerCase())
+                    )
+                  : filteredAll;
+
+                const products =
+                  selectedCat || selectedBrand || q ? searchedAll : all.slice(0, 5);
                 const canShowMore = !selectedCat && all.length > 5;
                 return (
                   <section key={cat} className="space-y-4">
