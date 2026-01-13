@@ -335,7 +335,7 @@ export default async function LojaPage({
         </section>
 
         {/* Filtro/pesquisa do Vestuário (aparece na tela principal também) */}
-        {isMainSelected && selectedMainNode?.slug === "vestuario" && !mainHasBrands ? (
+        {isMainSelected && (main === "vestuario" || selectedMainNode?.slug === "vestuario") && !mainHasBrands ? (
           <div className="mt-6 section-shell rounded-3xl p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
@@ -350,7 +350,7 @@ export default async function LojaPage({
             </div>
 
             <form action="/loja" method="GET" className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
-              <input type="hidden" name="main" value={selectedMainNode.slug} />
+              <input type="hidden" name="main" value={main ?? "vestuario"} />
               {selectedCat ? <input type="hidden" name="cat" value={selectedCat} /> : null}
               {selectedBrand ? <input type="hidden" name="brand" value={selectedBrand} /> : null}
               <input
@@ -367,7 +367,7 @@ export default async function LojaPage({
               </button>
             </form>
 
-            {hasCatalog ? (
+            {hasCatalog && selectedMainNode ? (
               (() => {
                 const clothingBrandNodes = childrenOf(selectedMainNode.id, "clothing_brand");
                 if (!clothingBrandNodes.length) return null;
@@ -393,7 +393,34 @@ export default async function LojaPage({
                   </div>
                 );
               })()
-            ) : null}
+            ) : (
+              // Fallback sem catálogo: marcas vêm dos produtos (texto)
+              (() => {
+                const brands = Array.from(
+                  new Set(clothingProducts.map((p) => (p.brand ?? "").trim()).filter(Boolean))
+                ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+                if (!brands.length) return null;
+                return (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {brands.map((b) => {
+                      const active = selectedBrand === b;
+                      const href = `/loja?main=${encodeURIComponent(main ?? "vestuario")}&brand=${encodeURIComponent(b)}${q ? `&q=${encodeURIComponent(q)}` : ""}${selectedCat ? `&cat=${encodeURIComponent(selectedCat)}` : ""}`;
+                      return (
+                        <Link
+                          key={b}
+                          href={href}
+                          className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
+                            active ? "cta" : "cta-secondary"
+                          }`}
+                        >
+                          {b}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              })()
+            )}
           </div>
         ) : null}
 
