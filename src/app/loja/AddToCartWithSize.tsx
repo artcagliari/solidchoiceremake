@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AddToCartButton } from "./AddToCartButton";
 
 export function AddToCartWithSize({
@@ -27,6 +27,14 @@ export function AddToCartWithSize({
   const mustChoose = options.length > 0;
   const [size, setSize] = useState<string>("");
 
+  // No modo select, pré-seleciona o primeiro tamanho para não mostrar placeholder
+  useEffect(() => {
+    if (sizeUi !== "select") return;
+    if (!mustChoose) return;
+    if (size) return;
+    setSize(options[0] ?? "");
+  }, [mustChoose, options, size, sizeUi]);
+
   return (
     <div className="space-y-2">
       {mustChoose && sizeUi === "select" ? (
@@ -38,7 +46,6 @@ export function AddToCartWithSize({
             "w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-slate-200 outline-none"
           }
         >
-          <option value="">Selecione o tamanho</option>
           {options.map((s) => (
             <option key={s} value={s}>
               {s}
