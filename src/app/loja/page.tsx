@@ -711,6 +711,106 @@ export default async function LojaPage({
               byNode.set(p.catalog_node_id, list);
             }
 
+            const hasLinkedProducts = byNode.size > 0;
+
+            // Fallback: se os produtos ainda não estão ligados ao catálogo (catalog_node_id vazio),
+            // renderiza por category string (antigo) MAS mantendo filtro por marca (clothing_brand) quando existir.
+            if (!hasLinkedProducts) {
+              const clothingBrandNodes =
+                mainNode ? childrenOf(mainNode.id, "clothing_brand") : [];
+              const labelBySlug = new Map(clothingBrandNodes.map((n) => [n.slug, n.label]));
+              const brandsFromProducts = Array.from(
+                new Set(
+                  (clothingByCategory.get(selectedCat ?? "") ?? [])
+                    .map((p) => (p.brand ?? "").trim())
+                    .filter(Boolean)
+                )
+              ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+              return visibleClothingCategories.length === 0 ? (
+                <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
+                  {selectedCat ? "Categoria não encontrada." : "Nenhum vestuário cadastrado ainda."}
+                </div>
+              ) : (
+                <div className="mt-8 space-y-10">
+                  {visibleClothingCategories.map((cat) => {
+                    const all = clothingByCategory.get(cat) ?? [];
+
+                    const filteredAll =
+                      selectedCat && selectedBrand
+                        ? all.filter((p) => {
+                            const label = labelBySlug.get(selectedBrand);
+                            if (label) {
+                              return (p.brand ?? "").trim().toLowerCase() === label.trim().toLowerCase();
+                            }
+                            // fallback: se não achou no catálogo, tenta comparar direto
+                            return (p.brand ?? "").trim().toLowerCase() === selectedBrand.trim().toLowerCase();
+                          })
+                        : all;
+
+                    const products = selectedCat ? filteredAll : all.slice(0, 5);
+                    const canShowMore = !selectedCat && all.length > 5;
+                    return (
+                      <section key={cat} className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
+                            {cat}
+                          </h2>
+                          {canShowMore ? (
+                            <Link
+                              href={`/loja?main=vestuario&cat=${encodeURIComponent(cat)}`}
+                              className="cta-secondary rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                            >
+                              Ver mais
+                            </Link>
+                          ) : null}
+                        </div>
+
+                        {selectedCat ? (
+                          <div className="section-shell rounded-2xl p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                                Filtrar por marca
+                              </p>
+                              <Link
+                                href={`/loja?main=vestuario&cat=${encodeURIComponent(cat)}`}
+                                className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
+                              >
+                                Limpar
+                              </Link>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {(clothingBrandNodes.length
+                                ? clothingBrandNodes.map((b) => ({ key: b.slug, label: b.label, href: hrefVestBrand(b.slug) }))
+                                : brandsFromProducts.map((b) => ({ key: b, label: b, href: hrefVestBrand(b) }))
+                              ).map((b) => {
+                                const active = selectedBrand === b.key;
+                                return (
+                                  <Link
+                                    key={b.key}
+                                    href={b.href}
+                                    className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
+                                      active ? "cta" : "cta-secondary"
+                                    }`}
+                                  >
+                                    {b.label}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                          {products.map(renderProductCard)}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              );
+            }
+
             const visibleSubs = selectedSub ? [selectedSub] : subNodes;
             return visibleSubs.length === 0 ? (
               <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-slate-200">
