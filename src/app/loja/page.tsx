@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { AddToCartWithSize } from "./AddToCartWithSize";
+import { AddToCartButton } from "./AddToCartButton";
 import { AdminOnlyLink } from "./AdminOnlyLink";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ type Product = {
 
 type CatalogNode = {
   id: string;
-  kind: "main" | "subcategory" | "brand" | "line";
+  kind: "main" | "subcategory" | "brand" | "line" | "clothing_brand";
   parent_id: string | null;
   label: string;
   slug: string;
@@ -184,18 +184,19 @@ export default async function LojaPage({
     : main === "sneakers";
 
   const hrefMain = (m: string) => `/loja?main=${encodeURIComponent(m)}`;
-  const hrefVestBrand = (brandName: string) => {
+  const hrefVestBrand = (brandSlug: string) => {
     if (!selectedMainNode) return "/loja";
     if (!selectedCat) return hrefMain(selectedMainNode.slug);
-    if (selectedBrand === brandName) {
+    if (selectedBrand === brandSlug) {
       return `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}`;
     }
-    return `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}&brand=${encodeURIComponent(brandName)}`;
+    return `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}&brand=${encodeURIComponent(brandSlug)}`;
   };
 
   const renderProductCard = (p: Product) => {
     const img = p.hero_image || "/assets/banner-facil.png";
     const href = p.slug ? `/loja/${p.slug}` : "/loja";
+    const hasSizes = Array.isArray(p.sizes) && p.sizes.filter(Boolean).length > 0;
     return (
       <div key={p.id} className="section-shell overflow-hidden rounded-2xl p-3">
         <Link href={href} className="block">
@@ -225,12 +226,22 @@ export default async function LojaPage({
           >
             Ver detalhes
           </Link>
-          <AddToCartWithSize
-            productId={p.id}
-            sizes={p.sizes ?? null}
-            buttonClassName="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-            buttonText="Adicionar"
-          />
+          {hasSizes ? (
+            <Link
+              href={href}
+              className="cta flex items-center justify-center rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+            >
+              Escolher tamanho
+            </Link>
+          ) : (
+            <AddToCartButton
+              productId={p.id}
+              size={null}
+              className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+            >
+              Adicionar
+            </AddToCartButton>
+          )}
         </div>
       </div>
     );
@@ -726,13 +737,19 @@ export default async function LojaPage({
               <div className="mt-8 space-y-10">
                 {visibleSubs.map((s) => {
                   const all = byNode.get(s.id) ?? [];
-                  const brandsInCategory = Array.from(
-                    new Set(all.map((p) => (p.brand ?? "").trim()).filter(Boolean))
-                  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+                  const clothingBrandNodes =
+                    mainNode ? childrenOf(mainNode.id, "clothing_brand") : [];
+                  const clothingBrandLabelBySlug = new Map(
+                    clothingBrandNodes.map((n) => [n.slug, n.label])
+                  );
 
                   const filteredAll =
                     selectedSub && selectedBrand
-                      ? all.filter((p) => (p.brand ?? "").trim() === selectedBrand)
+                      ? all.filter(
+                          (p) =>
+                            (p.brand ?? "").trim().toLowerCase() ===
+                            (clothingBrandLabelBySlug.get(selectedBrand) ?? "").trim().toLowerCase()
+                        )
                       : all;
 
                   const products = selectedSub ? filteredAll : all.slice(0, 5);
@@ -769,17 +786,17 @@ export default async function LojaPage({
                             </Link>
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {brandsInCategory.map((b) => {
-                              const active = selectedBrand === b;
+                            {clothingBrandNodes.map((b) => {
+                              const active = selectedBrand === b.slug;
                               return (
                                 <Link
-                                  key={b}
-                                  href={hrefVestBrand(b)}
+                                  key={b.id}
+                                  href={hrefVestBrand(b.slug)}
                                   className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
                                     active ? "cta" : "cta-secondary"
                                   }`}
                                 >
-                                  {b}
+                                  {b.label}
                                 </Link>
                               );
                             })}
