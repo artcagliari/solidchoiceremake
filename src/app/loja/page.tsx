@@ -51,7 +51,7 @@ function priceLabel(price_cents: number | null) {
 export default async function LojaPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ cat?: string; main?: string; brand?: string; line?: string }>;
+  searchParams?: Promise<{ cat?: string; main?: string; brand?: string; line?: string; q?: string }>;
 }) {
   const sp = searchParams ? await searchParams : undefined;
   const { data, error } = await supabaseAdmin
@@ -79,6 +79,9 @@ export default async function LojaPage({
   const selectedLineRaw =
     typeof sp?.line === "string" ? sp.line : null;
   const selectedLine = selectedLineRaw ? selectedLineRaw.trim() : null;
+
+  const qRaw = typeof sp?.q === "string" ? sp.q : null;
+  const q = qRaw ? qRaw.trim() : null;
 
   // Novo catálogo (se existir no Supabase). Fallback para o esquema antigo caso não exista.
   let catalog: CatalogNode[] = [];
@@ -184,13 +187,20 @@ export default async function LojaPage({
     : main === "sneakers";
 
   const hrefMain = (m: string) => `/loja?main=${encodeURIComponent(m)}`;
+  const hrefVestClear = () =>
+    selectedCat
+      ? `/loja?main=${encodeURIComponent(selectedMainNode?.slug ?? "vestuario")}&cat=${encodeURIComponent(selectedCat)}`
+      : hrefMain(selectedMainNode?.slug ?? "vestuario");
   const hrefVestBrand = (brandSlug: string) => {
     if (!selectedMainNode) return "/loja";
     if (!selectedCat) return hrefMain(selectedMainNode.slug);
     if (selectedBrand === brandSlug) {
-      return `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}`;
+      return q
+        ? `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}&q=${encodeURIComponent(q)}`
+        : `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}`;
     }
-    return `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}&brand=${encodeURIComponent(brandSlug)}`;
+    const base = `/loja?main=${encodeURIComponent(selectedMainNode.slug)}&cat=${encodeURIComponent(selectedCat)}&brand=${encodeURIComponent(brandSlug)}`;
+    return q ? `${base}&q=${encodeURIComponent(q)}` : base;
   };
 
   const renderProductCard = (p: Product) => {
@@ -748,7 +758,14 @@ export default async function LojaPage({
                           })
                         : all;
 
-                    const products = selectedCat ? filteredAll : all.slice(0, 5);
+                    const searchedAll =
+                      selectedCat && q
+                        ? filteredAll.filter((p) =>
+                            (p.name ?? "").toLowerCase().includes(q.toLowerCase())
+                          )
+                        : filteredAll;
+
+                    const products = selectedCat ? searchedAll : all.slice(0, 5);
                     const canShowMore = !selectedCat && all.length > 5;
                     return (
                       <section key={cat} className="space-y-4">
@@ -770,15 +787,32 @@ export default async function LojaPage({
                           <div className="section-shell rounded-2xl p-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                                Filtrar por marca
+                                Filtros · Vestuário
                               </p>
                               <Link
-                                href={`/loja?main=vestuario&cat=${encodeURIComponent(cat)}`}
+                                href={hrefVestClear()}
                                 className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                               >
                                 Limpar
                               </Link>
                             </div>
+                            <form action="/loja" method="GET" className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+                              <input type="hidden" name="main" value={mainNode?.slug ?? "vestuario"} />
+                              <input type="hidden" name="cat" value={cat} />
+                              {selectedBrand ? <input type="hidden" name="brand" value={selectedBrand} /> : null}
+                              <input
+                                name="q"
+                                defaultValue={q ?? ""}
+                                placeholder="Pesquisar no vestuário..."
+                                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                              />
+                              <button
+                                type="submit"
+                                className="cta-secondary rounded-xl px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+                              >
+                                Pesquisar
+                              </button>
+                            </form>
                             <div className="mt-3 flex flex-wrap gap-2">
                               {(clothingBrandNodes.length
                                 ? clothingBrandNodes.map((b) => ({ key: b.slug, label: b.label, href: hrefVestBrand(b.slug) }))
@@ -835,7 +869,14 @@ export default async function LojaPage({
                         )
                       : all;
 
-                  const products = selectedSub ? filteredAll : all.slice(0, 5);
+                  const searchedAll =
+                    selectedSub && q
+                      ? filteredAll.filter((p) =>
+                          (p.name ?? "").toLowerCase().includes(q.toLowerCase())
+                        )
+                      : filteredAll;
+
+                  const products = selectedSub ? searchedAll : all.slice(0, 5);
                   const canShowMore = !selectedSub && all.length > 5;
                   if (all.length === 0) return null;
                   return (
@@ -859,15 +900,32 @@ export default async function LojaPage({
                         <div className="section-shell rounded-2xl p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                              Filtrar por marca
+                              Filtros · Vestuário
                             </p>
                             <Link
-                              href={`/loja?main=${encodeURIComponent(mainNode?.slug ?? "vestuario")}&cat=${encodeURIComponent(s.slug)}`}
+                              href={hrefVestClear()}
                               className="cta-secondary rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                             >
                               Limpar
                             </Link>
                           </div>
+                          <form action="/loja" method="GET" className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+                            <input type="hidden" name="main" value={mainNode?.slug ?? "vestuario"} />
+                            <input type="hidden" name="cat" value={s.slug} />
+                            {selectedBrand ? <input type="hidden" name="brand" value={selectedBrand} /> : null}
+                            <input
+                              name="q"
+                              defaultValue={q ?? ""}
+                              placeholder="Pesquisar no vestuário..."
+                              className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-100 outline-none"
+                            />
+                            <button
+                              type="submit"
+                              className="cta-secondary rounded-xl px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+                            >
+                              Pesquisar
+                            </button>
+                          </form>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {clothingBrandNodes.map((b) => {
                               const active = selectedBrand === b.slug;
