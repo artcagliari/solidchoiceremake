@@ -839,12 +839,14 @@ export default async function LojaPage({
                     const filteredAll =
                       selectedBrand
                         ? all.filter((p) => {
-                            const label = labelBySlug.get(selectedBrand);
-                            if (label) {
-                              return (p.brand ?? "").trim().toLowerCase() === label.trim().toLowerCase();
-                            }
-                            // fallback: se não achou no catálogo, tenta comparar direto
-                            return (p.brand ?? "").trim().toLowerCase() === selectedBrand.trim().toLowerCase();
+                            const label = (labelBySlug.get(selectedBrand) ?? selectedBrand).trim();
+                            const brandMatch =
+                              (p.brand ?? "").trim().toLowerCase() === label.toLowerCase();
+                            const nameMatch =
+                              (p.name ?? "").trim().toLowerCase().includes(label.toLowerCase());
+                            // Aceita match por brand (preferido) e também por name para cobrir itens antigos
+                            // onde a marca ficou no nome do produto.
+                            return brandMatch || nameMatch;
                           })
                         : all;
 
@@ -860,6 +862,7 @@ export default async function LojaPage({
                         ? searchedAll
                         : all.slice(0, 5);
                     const canShowMore = !selectedCat && all.length > 5;
+                    if ((selectedCat || selectedBrand || q) && products.length === 0) return null;
                     return (
                       <section key={cat} className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -1056,11 +1059,14 @@ export default async function LojaPage({
               {visibleClothingCategories.map((cat) => {
                 const all = clothingByCategory.get(cat) ?? [];
                 const filteredAll = selectedBrand
-                  ? all.filter(
-                      (p) =>
-                        (p.brand ?? "").trim().toLowerCase() ===
-                        selectedBrand.trim().toLowerCase()
-                    )
+                  ? all.filter((p) => {
+                      const label = selectedBrand.trim();
+                      const brandMatch =
+                        (p.brand ?? "").trim().toLowerCase() === label.toLowerCase();
+                      const nameMatch =
+                        (p.name ?? "").trim().toLowerCase().includes(label.toLowerCase());
+                      return brandMatch || nameMatch;
+                    })
                   : all;
 
                 const searchedAll = q
@@ -1072,6 +1078,7 @@ export default async function LojaPage({
                 const products =
                   selectedCat || selectedBrand || q ? searchedAll : all.slice(0, 5);
                 const canShowMore = !selectedCat && all.length > 5;
+                if ((selectedCat || selectedBrand || q) && products.length === 0) return null;
                 return (
                   <section key={cat} className="space-y-4">
                     <div className="flex items-center justify-between">
