@@ -956,25 +956,28 @@ export default async function LojaPage({
                     clothingBrandNodes.map((n) => [n.slug, n.label])
                   );
 
-                  const filteredAll =
-                    selectedSub && selectedBrand
-                      ? all.filter(
-                          (p) =>
-                            (p.brand ?? "").trim().toLowerCase() ===
-                            (clothingBrandLabelBySlug.get(selectedBrand) ?? "").trim().toLowerCase()
-                        )
-                      : all;
+                  const filteredAll = selectedBrand
+                    ? all.filter((p) => {
+                        const label = (clothingBrandLabelBySlug.get(selectedBrand) ?? selectedBrand).trim();
+                        const brandMatch =
+                          (p.brand ?? "").trim().toLowerCase() === label.toLowerCase();
+                        const nameMatch =
+                          (p.name ?? "").trim().toLowerCase().includes(label.toLowerCase());
+                        return brandMatch || nameMatch;
+                      })
+                    : all;
 
-                  const searchedAll =
-                    selectedSub && q
-                      ? filteredAll.filter((p) =>
-                          (p.name ?? "").toLowerCase().includes(q.toLowerCase())
-                        )
-                      : filteredAll;
+                  const searchedAll = q
+                    ? filteredAll.filter((p) =>
+                        (p.name ?? "").toLowerCase().includes(q.toLowerCase())
+                      )
+                    : filteredAll;
 
-                  const products = selectedSub ? searchedAll : all.slice(0, 5);
+                  const products =
+                    selectedSub || selectedBrand || q ? searchedAll : all.slice(0, 5);
                   const canShowMore = !selectedSub && all.length > 5;
                   if (all.length === 0) return null;
+                  if ((selectedSub || selectedBrand || q) && products.length === 0) return null;
                   return (
                     <section key={s.id} className="space-y-4">
                       <div className="flex items-center justify-between">
