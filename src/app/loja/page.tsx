@@ -196,7 +196,6 @@ export default async function LojaPage({
   const renderProductCard = (p: Product) => {
     const img = p.hero_image || "/assets/banner-facil.png";
     const href = p.slug ? `/loja/${p.slug}` : "/loja";
-    const hasSizes = Array.isArray(p.sizes) && p.sizes.filter(Boolean).length > 0;
     return (
       <div key={p.id} className="section-shell overflow-hidden rounded-2xl p-3">
         <Link href={href} className="block">
@@ -226,22 +225,6 @@ export default async function LojaPage({
           >
             Ver detalhes
           </Link>
-          {hasSizes ? (
-            <Link
-              href={href}
-              className="cta flex items-center justify-center rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-            >
-              Escolher tamanho
-            </Link>
-          ) : (
-            <AddToCartButton
-              productId={p.id}
-              size={null}
-              className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-            >
-              Adicionar
-            </AddToCartButton>
-          )}
         </div>
       </div>
     );
