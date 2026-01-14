@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 import { AddToCartButton } from "./AddToCartButton";
-import { AdminOnlyLink } from "./AdminOnlyLink";
+import { StoreHeader } from "./StoreHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -256,8 +256,10 @@ export default async function LojaPage({
   return (
     <div className="min-h-screen bg-[#0c1428] text-[#f2d3a8]">
       <div className="mx-auto max-w-6xl px-6 py-10">
+        <StoreHeader title={headerTitle} isMainSelected={isMainSelected} />
+
         {/* Hero / header do catálogo */}
-        <section className="section-shell overflow-hidden rounded-3xl px-6 py-8 sm:px-10 sm:py-10">
+        <section className="mt-6 section-shell overflow-hidden rounded-3xl px-6 py-8 sm:px-10 sm:py-10">
           <p className="badge inline-flex rounded-full px-3 py-2">
             SEMANA 02 · CATÁLOGO VISUAL
           </p>
@@ -267,43 +269,6 @@ export default async function LojaPage({
             ser buscada direto do mercado interno chinês. Peça no WhatsApp se não
             encontrar aqui.
           </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="https://wa.me/5554992739597?text=Quero%20importar%20com%20a%20Solid%20Choice"
-              target="_blank"
-              className="cta rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
-            >
-              Falar com a Solid
-            </Link>
-            <AdminOnlyLink />
-            <Link
-              href="/carrinho"
-              className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
-            >
-              Ver carrinho
-            </Link>
-            <Link
-              href="/minha-conta"
-              className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
-            >
-              Minhas compras
-            </Link>
-            {isMainSelected ? (
-              <Link
-                href="/loja"
-                className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
-              >
-                Voltar (categorias)
-              </Link>
-            ) : null}
-            <Link
-              href="/"
-              className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
-            >
-              Voltar para a landing
-            </Link>
-          </div>
 
         {isMainSelected && (selectedCat || selectedBrand || selectedModel) ? (
             <div className="mt-5 flex flex-wrap items-center gap-3">

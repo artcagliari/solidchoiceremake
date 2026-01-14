@@ -4,7 +4,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-export function AdminOnlyLink() {
+export function AdminOnlyLink({
+  variant = "pill",
+  className,
+  children,
+  title,
+}: {
+  variant?: "pill" | "icon";
+  className?: string;
+  children?: React.ReactNode;
+  title?: string;
+}) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -27,12 +37,18 @@ export function AdminOnlyLink() {
 
   if (!visible) return null;
 
+  const defaultPillClass =
+    "cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]";
+  const cls = className ?? defaultPillClass;
+
   return (
     <Link
       href="/admin"
-      className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+      className={cls}
+      title={title ?? (variant === "icon" ? "Painel admin" : undefined)}
+      aria-label={title ?? (variant === "icon" ? "Painel admin" : undefined)}
     >
-      Painel admin
+      {children ?? "Painel admin"}
     </Link>
   );
 }
