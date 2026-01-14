@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
     const total_cents = normalized.reduce((acc, x) => acc + x.line_total_cents, 0);
 
     // cria pedido
+    const public_token = crypto.randomUUID();
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
       .insert({
@@ -84,6 +86,7 @@ export async function POST(req: Request) {
         total_cents,
         email: auth.user.email ?? null,
         source: "whatsapp",
+        public_token,
       })
       .select("id")
       .single();
@@ -173,10 +176,16 @@ export async function POST(req: Request) {
       "Pode me orientar nos próximos passos?",
     ];
 
+    const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+    const order_public_url = public_token ? `${origin}/pedido/${public_token}` : null;
+    if (order_public_url) {
+      lines.push("", `Link do pedido: ${order_public_url}`);
+    }
+
     const text = encodeURIComponent(lines.join("\n"));
     const whatsapp_url = `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
 
-    return NextResponse.json({ ok: true, order_id, whatsapp_url });
+    return NextResponse.json({ ok: true, order_id, public_token, order_public_url, whatsapp_url });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
     return NextResponse.json({ error: message }, { status: 500 });

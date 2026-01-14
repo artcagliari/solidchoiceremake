@@ -11,6 +11,8 @@ type Order = {
   status: string | null;
   total_cents: number | null;
   created_at: string | null;
+  payment_link?: string | null;
+  public_token?: string | null;
   order_items?: Array<{
     id: string;
     quantity: number;
@@ -27,6 +29,18 @@ type Order = {
 function priceLabel(price_cents: number | null | undefined) {
   if (typeof price_cents !== "number" || price_cents <= 0) return "Sob consulta";
   return `R$ ${(price_cents / 100).toFixed(2).replace(".", ",")}`;
+}
+
+function statusLabel(status: string | null) {
+  const s = (status ?? "pending").toLowerCase();
+  if (s === "awaiting_payment") return "AGUARDANDO PAGAMENTO";
+  if (s === "paid") return "PAGO";
+  if (s === "confirmed") return "CONFIRMADO";
+  if (s === "shipping") return "EM SEPARAÇÃO";
+  if (s === "out_for_delivery") return "SAIU PARA ENTREGA";
+  if (s === "delivered") return "ENTREGUE";
+  if (s === "canceled") return "CANCELADO";
+  return "PENDENTE";
 }
 
 export default function MinhaContaPage() {
@@ -74,7 +88,7 @@ export default function MinhaContaPage() {
             </p>
             <h1 className="mt-4 text-3xl sm:text-4xl">Minhas compras</h1>
             <p className="mt-2 text-slate-200">
-              Aqui aparecem apenas compras <b>confirmadas</b>.
+              Aqui você acompanha o status dos seus pedidos.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -116,7 +130,7 @@ export default function MinhaContaPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                        Confirmado
+                        {statusLabel(o.status)}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-[#f2d3a8] break-all">
                         {o.id}
@@ -131,6 +145,29 @@ export default function MinhaContaPage() {
                       </p>
                     </div>
                   </div>
+
+                  {o.payment_link || o.public_token ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {o.public_token ? (
+                        <Link
+                          href={`/pedido/${o.public_token}`}
+                          className="cta-secondary rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                        >
+                          Abrir pedido
+                        </Link>
+                      ) : null}
+                      {o.payment_link ? (
+                        <a
+                          href={o.payment_link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="cta rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                        >
+                          Pagar agora
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {o.order_items?.length ? (
                     <div className="mt-4 space-y-3">

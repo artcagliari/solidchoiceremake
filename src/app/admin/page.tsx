@@ -44,6 +44,15 @@ type Order = {
   total_cents: number | null;
   email: string | null;
   created_at: string | null;
+  payment_link?: string | null;
+  public_token?: string | null;
+  shipping_name?: string | null;
+  shipping_phone?: string | null;
+  shipping_address?: string | null;
+  shipping_city?: string | null;
+  shipping_state?: string | null;
+  shipping_zip?: string | null;
+  shipping_notes?: string | null;
   order_items?: Array<{
     id: string;
     quantity: number;
@@ -135,6 +144,8 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [catalog, setCatalog] = useState<CatalogNode[]>([]);
+  const [origin, setOrigin] = useState("");
+  const [paymentLinks, setPaymentLinks] = useState<Record<string, string>>({});
 
   const [editing, setEditing] = useState<Product | null>(null);
 
@@ -203,10 +214,17 @@ export default function AdminPage() {
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
 
+  const orderGroup = (status: string | null) => {
+    const s = (status ?? "pending").toLowerCase();
+    if (["confirmed", "shipping", "out_for_delivery", "delivered"].includes(s)) return "confirmed";
+    if (["canceled"].includes(s)) return "canceled";
+    return "pending";
+  };
+
   const totals = useMemo(() => {
-    const sum = (status: string) =>
+    const sum = (group: string) =>
       orders
-        .filter((o) => (o.status ?? "").toLowerCase() === status)
+        .filter((o) => orderGroup(o.status) === group)
         .reduce((acc, o) => acc + (o.total_cents ?? 0), 0);
     return {
       confirmed: sum("confirmed"),
@@ -216,8 +234,8 @@ export default function AdminPage() {
   }, [orders]);
 
   const orderCounts = useMemo(() => {
-    const count = (status: string) =>
-      orders.filter((o) => (o.status ?? "").toLowerCase() === status).length;
+    const count = (group: string) =>
+      orders.filter((o) => orderGroup(o.status) === group).length;
     return {
       pending: count("pending"),
       confirmed: count("confirmed"),
@@ -264,7 +282,7 @@ export default function AdminPage() {
     const base =
       orderFilter === "all"
         ? orders
-        : orders.filter((o) => (o.status ?? "").toLowerCase() === orderFilter);
+        : orders.filter((o) => orderGroup(o.status) === orderFilter);
 
     const q = orderSearch.trim().toLowerCase();
     if (!q) return base;
@@ -278,7 +296,12 @@ export default function AdminPage() {
 
   const statusLabel = (status: string | null) => {
     const s = (status ?? "pending").toLowerCase();
+    if (s === "awaiting_payment") return "AGUARDANDO PAGAMENTO";
+    if (s === "paid") return "PAGO";
     if (s === "confirmed") return "CONFIRMADO";
+    if (s === "shipping") return "EM SEPARAÇÃO";
+    if (s === "out_for_delivery") return "SAIU PARA ENTREGA";
+    if (s === "delivered") return "ENTREGUE";
     if (s === "canceled") return "CANCELADO";
     return "PENDENTE";
   };
@@ -322,6 +345,24 @@ export default function AdminPage() {
       if (preferred) setManageBrandMainId(preferred.id);
     }
   }, [catalog, manageBrandMainId, manageSubMainId]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  useEffect(() => {
+    setPaymentLinks((prev) => {
+      const next = { ...prev };
+      orders.forEach((o) => {
+        if (next[o.id] === undefined) {
+          next[o.id] = o.payment_link ?? "";
+        }
+      });
+      return next;
+    });
+  }, [orders]);
 
   const fetchAll = async (t: string) => {
     const [pRes, oRes] = await Promise.all([
@@ -773,7 +814,7 @@ export default function AdminPage() {
     }
   };
 
-  const updateOrderStatus = async (id: string, status: string) => {
+  const updateOrder = async (id: string, patch: { status?: string; payment_link?: string | null }) => {
     if (!token) return;
     try {
       const res = await fetch("/api/admin/orders", {
@@ -782,25 +823,58 @@ export default function AdminPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id, ...patch }),
       });
       if (!res.ok) throw new Error(await res.text());
       await fetchAll(token);
       setHighlightOrderId(id);
-      setNotice(
-        status === "confirmed"
-          ? `Pedido ${id} confirmado.`
-          : status === "canceled"
-          ? `Pedido ${id} cancelado.`
-          : `Pedido ${id} atualizado.`
-      );
-      if (status === "canceled") setOrderFilter("canceled");
-      if (status === "confirmed") setOrderFilter("confirmed");
+      if (patch.status) {
+        setNotice(`Pedido ${id} atualizado para ${statusLabel(patch.status)}.`);
+        if (patch.status === "canceled") setOrderFilter("canceled");
+        if (patch.status === "confirmed") setOrderFilter("confirmed");
+      } else {
+        setNotice(`Link de pagamento atualizado para ${id}.`);
+      }
       window.setTimeout(() => setHighlightOrderId(null), 4500);
       window.setTimeout(() => setNotice(null), 4500);
     } catch (err) {
       console.error(err);
       alert("Não foi possível atualizar o pedido.");
+    }
+  };
+
+  const updateOrderStatus = async (id: string, status: string) => {
+    await updateOrder(id, { status });
+  };
+
+  const updateOrderPaymentLink = async (id: string) => {
+    const link = (paymentLinks[id] ?? "").trim();
+    await updateOrder(id, { payment_link: link || null });
+  };
+
+  const buildOrderMessage = (o: Order) => {
+    const pay = (paymentLinks[o.id] ?? o.payment_link ?? "").trim();
+    const orderUrl = o.public_token && origin ? `${origin}/pedido/${o.public_token}` : "";
+    const lines = [
+      "Olá! Seguem os dados do seu pedido na Solid Choice.",
+      "",
+      `Pedido: ${o.id}`,
+      orderUrl ? `Link do pedido: ${orderUrl}` : null,
+      pay ? `Link de pagamento: ${pay}` : null,
+      "",
+      "Assim que o pagamento for confirmado e o endereço preenchido, o status será atualizado por aqui.",
+    ].filter(Boolean) as string[];
+    return lines.join("\n");
+  };
+
+  const copyOrderMessage = async (o: Order) => {
+    try {
+      const msg = buildOrderMessage(o);
+      await navigator.clipboard.writeText(msg);
+      setNotice("Mensagem copiada para o WhatsApp.");
+      window.setTimeout(() => setNotice(null), 4500);
+    } catch {
+      alert("Não foi possível copiar a mensagem.");
     }
   };
 
@@ -1267,73 +1341,153 @@ export default function AdminPage() {
                     Nenhum pedido nesta aba.
                   </p>
                 ) : (
-                  filteredOrders.slice(0, 20).map((o) => (
-                    <div
-                      key={o.id}
-                      className={`rounded-2xl border bg-white/5 p-4 transition ${
-                        highlightOrderId === o.id
-                          ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
-                          : "border-white/10"
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                            {statusLabel(o.status)}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-[#f2d3a8] break-all">
-                            {o.id}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-300">
-                            {o.email ?? "Sem email"}
-                          </p>
+                  filteredOrders.slice(0, 20).map((o) => {
+                    const orderUrl =
+                      o.public_token && origin ? `${origin}/pedido/${o.public_token}` : "";
+                    const payValue = paymentLinks[o.id] ?? o.payment_link ?? "";
+                    return (
+                      <div
+                        key={o.id}
+                        className={`rounded-2xl border bg-white/5 p-4 transition ${
+                          highlightOrderId === o.id
+                            ? "border-[#f2d3a8]/60 ring-2 ring-[#f2d3a8]/20"
+                            : "border-white/10"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                              {statusLabel(o.status)}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-[#f2d3a8] break-all">
+                              {o.id}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-300">
+                              {o.email ?? "Sem email"}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
+                              Total
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-[#f2d3a8]">
+                              {priceLabel(o.total_cents)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs uppercase tracking-[0.12em] text-slate-300">
-                            Total
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-[#f2d3a8]">
-                            {priceLabel(o.total_cents)}
-                          </p>
-                        </div>
-                      </div>
 
-                      {o.order_items?.length ? (
-                        <div className="mt-3 space-y-2">
-                          {o.order_items.slice(0, 5).map((it) => (
-                            <div
-                              key={it.id}
-                              className="flex items-center justify-between gap-3 text-xs text-slate-200"
+                        {o.order_items?.length ? (
+                          <div className="mt-3 space-y-2">
+                            {o.order_items.slice(0, 5).map((it) => (
+                              <div
+                                key={it.id}
+                                className="flex items-center justify-between gap-3 text-xs text-slate-200"
+                              >
+                                <span className="line-clamp-1">
+                                  {it.product?.name ?? "Produto"} x{it.quantity}
+                                </span>
+                                <span className="text-slate-300">
+                                  {orderItemTotalLabel(it)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
+                            Link do pedido
+                          </p>
+                          {orderUrl ? (
+                            <a
+                              href={orderUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2 inline-flex text-xs text-[#f2d3a8] hover:underline break-all"
                             >
-                              <span className="line-clamp-1">
-                                {it.product?.name ?? "Produto"} x{it.quantity}
-                              </span>
-                              <span className="text-slate-300">
-                                {orderItemTotalLabel(it)}
-                              </span>
-                            </div>
-                          ))}
+                              {orderUrl}
+                            </a>
+                          ) : (
+                            <p className="mt-2 text-xs text-slate-400">
+                              Aguardando token do pedido.
+                            </p>
+                          )}
                         </div>
-                      ) : null}
 
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="cta rounded-xl px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                          onClick={() => updateOrderStatus(o.id, "confirmed")}
-                        >
-                          Confirmar
-                        </button>
-                        <button
-                          type="button"
-                          className="cta-secondary rounded-xl px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                          onClick={() => updateOrderStatus(o.id, "canceled")}
-                        >
-                          Cancelar
-                        </button>
+                        <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
+                            Link de pagamento
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <input
+                              value={payValue}
+                              onChange={(e) =>
+                                setPaymentLinks((prev) => ({
+                                  ...prev,
+                                  [o.id]: e.target.value,
+                                }))
+                              }
+                              placeholder="Cole o link do pagamento"
+                              className="flex-1 min-w-[220px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateOrderPaymentLink(o.id)}
+                              className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                            >
+                              Salvar link
+                            </button>
+                            {payValue ? (
+                              <a
+                                href={payValue}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                              >
+                                Abrir pagamento
+                              </a>
+                            ) : null}
+                          </div>
+                          <div className="mt-2">
+                            <button
+                              type="button"
+                              onClick={() => copyOrderMessage(o)}
+                              className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                            >
+                              Copiar mensagem p/ WhatsApp
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {[
+                            ["awaiting_payment", "Aguardando pagamento"],
+                            ["paid", "Pago"],
+                            ["confirmed", "Confirmado"],
+                            ["shipping", "Em separação"],
+                            ["out_for_delivery", "Saiu p/ entrega"],
+                            ["delivered", "Entregue"],
+                          ].map(([key, label]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                              onClick={() => updateOrderStatus(o.id, key)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                            onClick={() => updateOrderStatus(o.id, "canceled")}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

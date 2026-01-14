@@ -28,10 +28,9 @@ export async function GET(req: Request) {
     const { data, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "id,status,total_cents,created_at,order_items(id,quantity,product:products(id,name,hero_image,slug,price_cents))"
+        "id,status,total_cents,created_at,payment_link,public_token,order_items(id,quantity,product:products(id,name,hero_image,slug,price_cents))"
       )
       .eq("user_id", auth.user.id)
-      .eq("status", "confirmed")
       .order("created_at", { ascending: false })
       .limit(50);
 
