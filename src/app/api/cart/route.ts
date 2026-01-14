@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabaseAdmin
       .from("cart_items")
       .select(
-        "id,quantity,size,product:products(id,name,price_cents,hero_image,slug,category)"
+        "id,quantity,size,box_option,product:products(id,name,price_cents,hero_image,slug,category)"
       )
       .eq("cart_id", cartId)
       .order("created_at", { ascending: false });
@@ -78,6 +78,7 @@ export async function POST(req: Request) {
       product_id?: string;
       quantity?: number;
       size?: string | null;
+      box_option?: string | null;
     };
     const product_id = body.product_id;
     const quantity = typeof body.quantity === "number" ? body.quantity : 1;
@@ -87,6 +88,14 @@ export async function POST(req: Request) {
         : body.size === null
         ? null
         : null;
+    const box_option_raw =
+      typeof body.box_option === "string"
+        ? body.box_option.trim().toLowerCase()
+        : body.box_option === null
+        ? null
+        : null;
+    const box_option =
+      box_option_raw === "com" || box_option_raw === "sem" ? box_option_raw : null;
 
     if (!product_id) {
       return NextResponse.json({ error: "product_id obrigatório" }, { status: 400 });
@@ -106,6 +115,7 @@ export async function POST(req: Request) {
       .eq("cart_id", cartId)
       .eq("product_id", product_id);
     find = size === null ? find.is("size", null) : find.eq("size", size);
+    find = box_option === null ? find.is("box_option", null) : find.eq("box_option", box_option);
     const { data: existing, error: findErr } = await find.maybeSingle();
 
     if (findErr) throw new Error(findErr.message);
@@ -122,7 +132,7 @@ export async function POST(req: Request) {
 
     const { data: created, error: insErr } = await supabaseAdmin
       .from("cart_items")
-      .insert({ cart_id: cartId, product_id, quantity, size })
+      .insert({ cart_id: cartId, product_id, quantity, size, box_option })
       .select("id,quantity")
       .single();
 

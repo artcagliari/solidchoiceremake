@@ -7,3 +7,10 @@ add column if not exists size text;
 alter table public.order_items
 add column if not exists size text;
 
+-- Opção de caixa do item (Com / Sem)
+alter table public.cart_items
+add column if not exists box_option text;
+
+alter table public.order_items
+add column if not exists box_option text;
+

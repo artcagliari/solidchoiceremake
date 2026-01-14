@@ -7,12 +7,14 @@ import { useState } from "react";
 export function AddToCartButton({
   productId,
   size,
+  box_option,
   className,
   children,
   disabled,
 }: {
   productId: string;
   size?: string | null;
+  box_option?: "com" | "sem" | null;
   className?: string;
   children: React.ReactNode;
   disabled?: boolean;
@@ -37,7 +39,12 @@ export function AddToCartButton({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ product_id: productId, quantity: 1, size: size ?? null }),
+        body: JSON.stringify({
+          product_id: productId,
+          quantity: 1,
+          size: size ?? null,
+          box_option: box_option ?? null,
+        }),
       });
 
       if (!res.ok) {

@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
     const { data: items, error: itemsErr } = await supabaseAdmin
       .from("cart_items")
-      .select("id,quantity,size,product:products(id,name,price_cents)")
+      .select("id,quantity,size,box_option,product:products(id,name,price_cents)")
       .eq("cart_id", cartId);
     if (itemsErr) throw new Error(itemsErr.message);
 
@@ -56,11 +56,13 @@ export async function POST(req: Request) {
       const qty = Number(it.quantity ?? 0);
       const price = typeof p.price_cents === "number" ? p.price_cents : 0;
       const size = (it as unknown as { size?: string | null }).size ?? null;
+      const box_option = (it as unknown as { box_option?: string | null }).box_option ?? null;
       return {
         cart_item_id: it.id as string,
         product_id: p.id,
         name: p.name,
         size,
+        box_option,
         quantity: qty,
         unit_price_cents: price,
         line_total_cents: price * qty,
@@ -93,6 +95,7 @@ export async function POST(req: Request) {
       order_id,
       product_id: x.product_id,
       size: x.size,
+      box_option: x.box_option,
       quantity: x.quantity,
       unit_price_cents: x.unit_price_cents,
       line_total_cents: x.line_total_cents,
@@ -117,6 +120,7 @@ export async function POST(req: Request) {
         order_id,
         product_id: x.product_id,
         size: x.size,
+        box_option: x.box_option,
         quantity: x.quantity,
       }));
 
@@ -158,7 +162,8 @@ export async function POST(req: Request) {
       "Itens:",
       ...normalized.map((x) => {
         const sizePart = x.size ? ` · Tam: ${x.size}` : "";
-        return `- ${x.name}${sizePart} x${x.quantity} (${formatCurrency(x.unit_price_cents)}) = ${formatCurrency(
+        const boxPart = x.box_option ? ` · Caixa: ${x.box_option === "sem" ? "Sem" : "Com"}` : "";
+        return `- ${x.name}${sizePart}${boxPart} x${x.quantity} (${formatCurrency(x.unit_price_cents)}) = ${formatCurrency(
           x.line_total_cents
         )}`;
       }),

@@ -10,6 +10,7 @@ type CartItem = {
   id: string;
   quantity: number;
   size?: string | null;
+  box_option?: string | null;
   product: {
     id: string;
     name: string;
@@ -220,6 +221,11 @@ export default function CarrinhoPage() {
                         {it.size ? (
                           <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
                             Tamanho: {it.size}
+                          </p>
+                        ) : null}
+                        {it.box_option ? (
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                            Caixa: {it.box_option === "sem" ? "Sem" : "Com"}
                           </p>
                         ) : null}
                       </div>
