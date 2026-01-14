@@ -189,7 +189,7 @@ export default function AdminPage() {
   const [brandSort, setBrandSort] = useState<number>(10);
   const [brandLogoFile, setBrandLogoFile] = useState<File | null>(null);
 
-  // Sneakers: linha
+  // Sneakers: modelo
   const [lineBrandId, setLineBrandId] = useState<string>("");
   const [lineLabel, setLineLabel] = useState("");
   const [lineSlug, setLineSlug] = useState("");
@@ -905,7 +905,7 @@ export default function AdminPage() {
                   Catálogo (novo)
                 </p>
                 <p className="mt-2 text-xs text-slate-300">
-                  Se a categoria principal tiver <b>Marcas</b>: selecione Marca + Linha. Caso contrário: selecione a Subcategoria.
+                  Se a categoria principal tiver <b>Marcas</b>: selecione Marca + Modelo. Caso contrário: selecione a Subcategoria.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className="block">
@@ -1008,7 +1008,7 @@ export default function AdminPage() {
                       </label>
 
                       <label className="block">
-                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Linha (ex.: Air Force)</span>
+                        <span className="text-xs uppercase tracking-[0.12em] text-slate-300">Modelo (ex.: Air Force)</span>
                         <select
                           value={catalogLineId}
                           onChange={(e) => setCatalogLineId(e.target.value)}
@@ -1400,7 +1400,7 @@ export default function AdminPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold uppercase tracking-[0.12em] text-slate-200">
-                Catálogo · Categorias / Marcas / Linhas
+                Catálogo · Categorias / Marcas / Modelos
               </h2>
               <p className="mt-2 text-sm text-slate-200">
                 Aqui é tudo por <b>upload</b> (galeria), sem URL.
@@ -1707,7 +1707,7 @@ export default function AdminPage() {
 
                     {subMain && subMainHasBrands ? (
                       <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm text-slate-200">
-                        <b>{subMain.label}</b> usa o esquema <b>Marca → Linha</b> (ex.: Sneakers).
+                        <b>{subMain.label}</b> usa o esquema <b>Marca → Modelo</b> (ex.: Sneakers).
                         <div className="mt-1 text-xs text-slate-300">
                           Por isso, <b>Subcategorias</b> ficam desativadas aqui.
                         </div>
@@ -1904,11 +1904,11 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Marcas e linhas (por categoria principal) */}
+                {/* Marcas e modelos (por categoria principal) */}
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
-                      Marcas e Linhas
+                      Marcas e Modelos
                     </p>
                     <span className="text-xs text-slate-400">{brands.length}</span>
                   </div>
@@ -1931,9 +1931,9 @@ export default function AdminPage() {
 
                   {brandMain && !brandMainHasBrands ? (
                     <div className="mt-3 rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-slate-200">
-                      Esta categoria principal não está usando <b>Marcas/Linhas</b> ainda.
+                      Esta categoria principal não está usando <b>Marcas/Modelos</b> ainda.
                       <div className="mt-1 text-xs text-slate-400">
-                        Se você criar uma marca aqui, ela passa a funcionar no modo <b>Marca → Linha</b>.
+                        Se você criar uma marca aqui, ela passa a funcionar no modo <b>Marca → Modelo</b>.
                       </div>
                     </div>
                   ) : null}
@@ -2003,9 +2003,9 @@ export default function AdminPage() {
                     </button>
                   </div>
 
-                  {/* Criar linha */}
+                  {/* Criar modelo */}
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Criar linha (dentro de uma marca)</p>
+                    <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Criar modelo (dentro de uma marca)</p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <select
                         value={lineBrandId}
@@ -2059,7 +2059,7 @@ export default function AdminPage() {
                         setLineSort(10);
                       }}
                     >
-                      Criar linha
+                      Criar modelo
                     </button>
                   </div>
 
@@ -2123,7 +2123,7 @@ export default function AdminPage() {
                               ))}
                             </div>
                           ) : (
-                            <p className="mt-3 text-xs text-slate-400">Sem linhas ainda.</p>
+                            <p className="mt-3 text-xs text-slate-400">Sem modelos ainda.</p>
                           )}
                         </div>
                       );
