@@ -16,7 +16,7 @@ function IconButton({
   external?: boolean;
 }) {
   const cls =
-    "cta-secondary inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/20 text-slate-200 transition hover:border-white/20";
+    "cta-secondary inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/20 text-slate-200 transition hover:border-white/20 sm:h-14 sm:w-14";
   return (
     <Link
       href={href}
@@ -33,7 +33,7 @@ function IconButton({
 
 function IconCart() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       <path
         d="M6 6h15l-2 8H8L6 6Z"
         stroke="currentColor"
@@ -56,7 +56,7 @@ function IconCart() {
 
 function IconUser() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       <path
         d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
         stroke="currentColor"
@@ -74,7 +74,7 @@ function IconUser() {
 
 function IconHome() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       <path
         d="M4 11.5 12 4l8 7.5V20a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 20v-8.5Z"
         stroke="currentColor"
@@ -93,7 +93,7 @@ function IconHome() {
 
 function IconGrid() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       <path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor" />
     </svg>
   );
@@ -101,7 +101,7 @@ function IconGrid() {
 
 function IconWhatsapp() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       <path
         d="M20 11.6A8.3 8.3 0 0 1 7.4 18L4 19l1-3.2A8.3 8.3 0 1 1 20 11.6Z"
         stroke="currentColor"
@@ -125,7 +125,7 @@ export function StoreHeader({
 }) {
   return (
     <div className="sticky top-4 z-40">
-      <div className="section-shell rounded-full px-4 py-3">
+      <div className="section-shell rounded-3xl px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center justify-between gap-4">
           <Link href="/loja" className="flex items-center gap-3">
             <div className="relative h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-black/20">
@@ -141,11 +141,14 @@ export function StoreHeader({
             </div>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 sm:gap-4">
             {isMainSelected ? (
-              <IconButton href="/loja" title="Voltar (categorias)">
-                <IconGrid />
-              </IconButton>
+              <>
+                <IconButton href="/loja" title="Voltar (categorias)">
+                  <IconGrid />
+                </IconButton>
+                <span className="h-8 w-px bg-white/10" />
+              </>
             ) : null}
 
             <IconButton
@@ -155,6 +158,8 @@ export function StoreHeader({
             >
               <IconWhatsapp />
             </IconButton>
+
+            <span className="h-8 w-px bg-white/10" />
 
             <IconButton href="/carrinho" title="Carrinho">
               <IconCart />
@@ -166,11 +171,13 @@ export function StoreHeader({
 
             <AdminOnlyLink
               variant="icon"
-              className="cta-secondary inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/20 text-slate-200 transition hover:border-white/20"
+              className="cta-secondary inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/20 text-slate-200 transition hover:border-white/20 sm:h-14 sm:w-14"
               title="Painel admin"
             >
-              <span className="text-xs font-semibold">ADM</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">ADM</span>
             </AdminOnlyLink>
+
+            <span className="h-8 w-px bg-white/10" />
 
             <IconButton href="/" title="Voltar para a landing">
               <IconHome />
