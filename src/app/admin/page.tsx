@@ -306,6 +306,17 @@ export default function AdminPage() {
     return "PENDENTE";
   };
 
+  const statusOptions = [
+    ["pending", "Pendente"],
+    ["awaiting_payment", "Aguardando pagamento"],
+    ["paid", "Pago"],
+    ["confirmed", "Confirmado"],
+    ["shipping", "Em separação"],
+    ["out_for_delivery", "Saiu p/ entrega"],
+    ["delivered", "Entregue"],
+    ["canceled", "Cancelado"],
+  ] as const;
+
   const defaultSizesByCategory = useMemo(() => {
     // Regra: Sneakers/Calçado = numérico; qualquer outro = roupa (S..XXL)
     if (catalogMain === "sneakers") return "36,37,38,39,40,41,42,43,44";
@@ -1394,89 +1405,97 @@ export default function AdminPage() {
                           </div>
                         ) : null}
 
-                        <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
-                            Link do pedido
-                          </p>
-                          {orderUrl ? (
-                            <a
-                              href={orderUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-2 inline-flex text-xs text-[#f2d3a8] hover:underline break-all"
-                            >
-                              {orderUrl}
-                            </a>
-                          ) : (
-                            <p className="mt-2 text-xs text-slate-400">
-                              Aguardando token do pedido.
-                            </p>
-                          )}
-                        </div>
+                        <details className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                          <summary className="cursor-pointer text-[11px] uppercase tracking-[0.12em] text-slate-300">
+                            Links e pagamento
+                          </summary>
+                          <div className="mt-3 space-y-3">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
+                                Link do pedido
+                              </p>
+                              {orderUrl ? (
+                                <a
+                                  href={orderUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-2 inline-flex text-xs text-[#f2d3a8] hover:underline break-all"
+                                >
+                                  {orderUrl}
+                                </a>
+                              ) : (
+                                <p className="mt-2 text-xs text-slate-400">
+                                  Aguardando token do pedido.
+                                </p>
+                              )}
+                            </div>
 
-                        <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
-                            Link de pagamento
-                          </p>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <input
-                              value={payValue}
-                              onChange={(e) =>
-                                setPaymentLinks((prev) => ({
-                                  ...prev,
-                                  [o.id]: e.target.value,
-                                }))
-                              }
-                              placeholder="Cole o link do pagamento"
-                              className="flex-1 min-w-[220px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => updateOrderPaymentLink(o.id)}
-                              className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                            >
-                              Salvar link
-                            </button>
-                            {payValue ? (
-                              <a
-                                href={payValue}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                              >
-                                Abrir pagamento
-                              </a>
-                            ) : null}
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-300">
+                                Link de pagamento
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <input
+                                  value={payValue}
+                                  onChange={(e) =>
+                                    setPaymentLinks((prev) => ({
+                                      ...prev,
+                                      [o.id]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Cole o link do pagamento"
+                                  className="flex-1 min-w-[220px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => updateOrderPaymentLink(o.id)}
+                                  className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                                >
+                                  Salvar link
+                                </button>
+                                {payValue ? (
+                                  <a
+                                    href={payValue}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                                  >
+                                    Abrir pagamento
+                                  </a>
+                                ) : null}
+                              </div>
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => copyOrderMessage(o)}
+                                  className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                                >
+                                  Copiar mensagem p/ WhatsApp
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                          <div className="mt-2">
-                            <button
-                              type="button"
-                              onClick={() => copyOrderMessage(o)}
-                              className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                            >
-                              Copiar mensagem p/ WhatsApp
-                            </button>
-                          </div>
-                        </div>
+                        </details>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {[
-                            ["awaiting_payment", "Gerar link de pagamento"],
-                            ["paid", "Pago"],
-                            ["confirmed", "Confirmado"],
-                            ["shipping", "Em separação"],
-                            ["out_for_delivery", "Saiu p/ entrega"],
-                            ["delivered", "Entregue"],
-                          ].map(([key, label]) => (
-                            <button
-                              key={key}
-                              type="button"
-                              className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                              onClick={() => updateOrderStatus(o.id, key)}
-                            >
-                              {label}
-                            </button>
-                          ))}
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <select
+                            value={(o.status ?? "pending").toLowerCase()}
+                            onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.12em] text-slate-100 outline-none"
+                          >
+                            {statusOptions.map(([key, label]) => (
+                              <option key={key} value={key}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="cta-secondary rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                            onClick={() => updateOrderStatus(o.id, "awaiting_payment")}
+                          >
+                            Gerar link
+                          </button>
                           <button
                             type="button"
                             className="cta rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em]"
