@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { createPagarmeCheckout } from "@/lib/pagarme";
 import { requireAdmin } from "../_auth";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "id,user_id,status,total_cents,email,source,created_at,payment_link,public_token,shipping_name,shipping_phone,shipping_address,shipping_city,shipping_state,shipping_zip,shipping_notes,order_items(id,quantity,product:products(id,name,hero_image,slug))"
+      "id,user_id,status,total_cents,email,source,created_at,payment_link,public_token,gateway_provider,gateway_order_id,shipping_name,shipping_phone,shipping_address,shipping_city,shipping_state,shipping_zip,shipping_notes,order_items(id,quantity,product:products(id,name,hero_image,slug))"
     )
     .order("created_at", { ascending: false })
     .limit(50);
@@ -42,11 +43,60 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "status ou payment_link obrigatório" }, { status: 400 });
     }
 
-    const patch: { status?: string; payment_link?: string | null } = {};
+    const patch: {
+      status?: string;
+      payment_link?: string | null;
+      gateway_provider?: string | null;
+      gateway_order_id?: string | null;
+    } = {};
     if (status) patch.status = status;
     if (body.payment_link !== undefined) {
       const link = String(body.payment_link ?? "").trim();
       patch.payment_link = link || null;
+    }
+
+    // Gera link automaticamente quando o admin coloca em "aguardando pagamento"
+    if (status === "awaiting_payment" && !patch.payment_link) {
+      const { data: order, error: orderErr } = await supabaseAdmin
+        .from("orders")
+        .select(
+          "id,total_cents,email,public_token,order_items(quantity,product:products(name,price_cents))"
+        )
+        .eq("id", id)
+        .single();
+      if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
+
+      const items = (order?.order_items ?? []).map((it: any) => ({
+        name: it.product?.name ?? "Produto",
+        quantity: Number(it.quantity ?? 1),
+        unit_price_cents: Number(it.product?.price_cents ?? 0),
+      }));
+
+      const origin =
+        req.headers.get("origin") ||
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "";
+
+      const checkout = await createPagarmeCheckout({
+        orderId: order.id,
+        amountCents: Number(order.total_cents ?? 0),
+        items,
+        customer: { name: "Cliente Solid Choice", email: order.email },
+        origin,
+        publicToken: order.public_token,
+      });
+
+      if (!checkout.payment_link) {
+        return NextResponse.json(
+          { error: "Pagar.me não retornou link de pagamento. Verifique a configuração." },
+          { status: 500 }
+        );
+      }
+
+      patch.payment_link = checkout.payment_link;
+      patch.gateway_provider = "pagarme";
+      patch.gateway_order_id = checkout.gateway_order_id;
     }
 
     const { error } = await supabaseAdmin.from("orders").update(patch).eq("id", id);

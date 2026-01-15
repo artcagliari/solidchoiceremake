@@ -1461,7 +1461,7 @@ export default function AdminPage() {
 
                         <div className="mt-4 flex flex-wrap gap-2">
                           {[
-                            ["awaiting_payment", "Aguardando pagamento"],
+                            ["awaiting_payment", "Gerar link de pagamento"],
                             ["paid", "Pago"],
                             ["confirmed", "Confirmado"],
                             ["shipping", "Em separação"],
