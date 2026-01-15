@@ -77,6 +77,9 @@ export default async function ProductPage({
   const images = listOrEmpty(product.images);
   const sizes = listOrEmpty(product.sizes);
   const colors = listOrEmpty(product.colors);
+  const categoryLabel = (product.category ?? "").toLowerCase();
+  const showBoxOption =
+    categoryLabel.includes("cal") || categoryLabel.includes("sneaker");
 
   return (
     <div className="min-h-screen bg-[#0c1428] text-[#f2d3a8]">
@@ -163,6 +166,7 @@ export default async function ProductPage({
                 buttonText="Adicionar à cotação"
                 sizeUi="chips"
                 sizesTitle="Tamanhos"
+                showBoxOption={showBoxOption}
               />
             </div>
           </div>
