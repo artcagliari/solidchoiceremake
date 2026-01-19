@@ -27,6 +27,13 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const auth = await requireAdmin(req);
   if (!auth.ok) {
+    // Mensagem mais clara se for erro de permissão
+    if (auth.status === 403) {
+      return NextResponse.json(
+        { error: "Acesso negado. Seu usuário precisa estar na tabela admin_users do Supabase." },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
@@ -78,18 +85,24 @@ export async function PATCH(req: Request) {
         process.env.NEXT_PUBLIC_APP_URL ||
         "";
 
-      const checkout = await createPagarmeCheckout({
-        orderId: order.id,
-        amountCents: Number(order.total_cents ?? 0),
-        items,
-        customer: { name: "Cliente Solid Choice", email: order.email },
-        origin,
-        publicToken: order.public_token,
-      });
+      let checkout;
+      try {
+        checkout = await createPagarmeCheckout({
+          orderId: order.id,
+          amountCents: Number(order.total_cents ?? 0),
+          items,
+          customer: { name: "Cliente Solid Choice", email: order.email },
+          origin,
+          publicToken: order.public_token,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro ao criar checkout no Pagar.me";
+        return NextResponse.json({ error: msg }, { status: 500 });
+      }
 
       if (!checkout.payment_link) {
         return NextResponse.json(
-          { error: "Pagar.me não retornou link de pagamento. Verifique a configuração." },
+          { error: "Pagar.me não retornou link de pagamento. Verifique PAGARME_SECRET_KEY no .env.local" },
           { status: 500 }
         );
       }

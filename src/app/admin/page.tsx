@@ -826,7 +826,10 @@ export default function AdminPage() {
   };
 
   const updateOrder = async (id: string, patch: { status?: string; payment_link?: string | null }) => {
-    if (!token) return;
+    if (!token) {
+      setError("Você precisa estar logado.");
+      return;
+    }
     try {
       const res = await fetch("/api/admin/orders", {
         method: "PATCH",
@@ -836,7 +839,17 @@ export default function AdminPage() {
         },
         body: JSON.stringify({ id, ...patch }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      const text = await res.text();
+      if (!res.ok) {
+        let errorMsg = text;
+        try {
+          const json = JSON.parse(text);
+          errorMsg = json.error || text;
+        } catch {
+          // mantém o texto original
+        }
+        throw new Error(errorMsg);
+      }
       await fetchAll(token);
       setHighlightOrderId(id);
       if (patch.status) {
@@ -849,8 +862,10 @@ export default function AdminPage() {
       window.setTimeout(() => setHighlightOrderId(null), 4500);
       window.setTimeout(() => setNotice(null), 4500);
     } catch (err) {
-      console.error(err);
-      alert("Não foi possível atualizar o pedido.");
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      console.error("Erro ao atualizar pedido:", err);
+      setError(`Erro: ${msg}`);
+      window.setTimeout(() => setError(null), 8000);
     }
   };
 

@@ -85,7 +85,14 @@ export async function createPagarmeCheckout(input: CreateCheckoutInput): Promise
 
   if (!res.ok) {
     const message = typeof json?.message === "string" ? json.message : text;
-    throw new Error(message || `Erro Pagar.me: ${res.status}`);
+    const errorMsg = message || `Erro Pagar.me: ${res.status}`;
+    // Se for erro de autorização, dá dica clara
+    if (res.status === 401 || res.status === 403 || message?.includes("Authorization")) {
+      throw new Error(
+        `Pagar.me: Chave secreta inválida ou sem permissão. Verifique PAGARME_SECRET_KEY no .env.local`
+      );
+    }
+    throw new Error(errorMsg);
   }
 
   return {
