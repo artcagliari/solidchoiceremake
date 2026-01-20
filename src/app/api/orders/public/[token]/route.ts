@@ -3,9 +3,10 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    const token = String(params.token ?? "").trim();
+    const { token: tokenParam } = await params;
+    const token = String(tokenParam ?? "").trim();
     if (!token) return NextResponse.json({ error: "Token inválido" }, { status: 400 });
 
     const { data, error } = await supabaseAdmin
@@ -26,9 +27,10 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { token: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    const token = String(params.token ?? "").trim();
+    const { token: tokenParam } = await params;
+    const token = String(tokenParam ?? "").trim();
     if (!token) return NextResponse.json({ error: "Token inválido" }, { status: 400 });
 
     const body = (await req.json()) as Partial<{
