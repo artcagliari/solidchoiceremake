@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       .eq("cart_id", cartId);
     if (itemsErr) throw new Error(itemsErr.message);
 
-    const normalized = (items ?? []).map((it) => {
+    const normalized = (items ?? []).map((it: any) => {
       const p = it.product as unknown as { id: string; name: string; price_cents: number | null };
       const qty = Number(it.quantity ?? 0);
       const price = typeof p.price_cents === "number" ? p.price_cents : 0;
