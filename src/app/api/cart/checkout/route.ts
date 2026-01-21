@@ -108,7 +108,7 @@ export async function POST(req: Request) {
 
     const order_id = order.id as string;
 
-    const orderItemsPayloadFull = normalized.map((x) => ({
+    const orderItemsPayloadFull = normalized.map((x: NormalizedItem) => ({
       order_id,
       product_id: x.product_id,
       size: x.size,
