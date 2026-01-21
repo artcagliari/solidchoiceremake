@@ -52,7 +52,18 @@ export async function POST(req: Request) {
       .eq("cart_id", cartId);
     if (itemsErr) throw new Error(itemsErr.message);
 
-    const normalized = (items ?? []).map((it: any) => {
+    type NormalizedItem = {
+      cart_item_id: string;
+      product_id: string;
+      name: string;
+      size: string | null;
+      box_option: string | null;
+      quantity: number;
+      unit_price_cents: number;
+      line_total_cents: number;
+    };
+
+    const normalized = (items ?? []).map((it: any): NormalizedItem => {
       const p = it.product as unknown as { id: string; name: string; price_cents: number | null };
       const qty = Number(it.quantity ?? 0);
       const price = typeof p.price_cents === "number" ? p.price_cents : 0;
@@ -68,13 +79,16 @@ export async function POST(req: Request) {
         unit_price_cents: price,
         line_total_cents: price * qty,
       };
-    }).filter((x: any) => x.quantity > 0);
+    }).filter((x): x is NormalizedItem => x.quantity > 0);
 
     if (normalized.length === 0) {
       return NextResponse.json({ error: "Carrinho vazio" }, { status: 400 });
     }
 
-    const total_cents = normalized.reduce((acc, x) => acc + x.line_total_cents, 0);
+    const total_cents = normalized.reduce(
+      (acc: number, x: NormalizedItem) => acc + x.line_total_cents,
+      0
+    );
 
     // cria pedido
     const public_token = crypto.randomUUID();
