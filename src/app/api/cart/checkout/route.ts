@@ -79,7 +79,7 @@ export async function POST(req: Request) {
         unit_price_cents: price,
         line_total_cents: price * qty,
       };
-    }).filter((x): x is NormalizedItem => x.quantity > 0);
+    }).filter((x: NormalizedItem): x is NormalizedItem => x.quantity > 0);
 
     if (normalized.length === 0) {
       return NextResponse.json({ error: "Carrinho vazio" }, { status: 400 });
