@@ -133,7 +133,7 @@ export async function POST(req: Request) {
       if (!isMissingCols) throw new Error(errFull.message);
 
       // tenta primeiro um payload "intermediário" com size (se existir) e sem preços
-      const orderItemsPayloadMid = normalized.map((x) => ({
+      const orderItemsPayloadMid = normalized.map((x: NormalizedItem) => ({
         order_id,
         product_id: x.product_id,
         size: x.size,
@@ -148,7 +148,7 @@ export async function POST(req: Request) {
         const msg2 = errMid.message || "";
         const isMissingSize = msg2.includes("size");
         if (!isMissingSize) throw new Error(errMid.message);
-        const orderItemsPayloadMinimal = normalized.map((x) => ({
+        const orderItemsPayloadMinimal = normalized.map((x: NormalizedItem) => ({
           order_id,
           product_id: x.product_id,
           quantity: x.quantity,
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
       `Pedido: ${order_id}`,
       "",
       "Itens:",
-      ...normalized.map((x) => {
+      ...normalized.map((x: NormalizedItem) => {
         const sizePart = x.size ? ` · Tam: ${x.size}` : "";
         const boxPart = x.box_option ? ` · Caixa: ${x.box_option === "sem" ? "Sem" : "Com"}` : "";
         return `- ${x.name}${sizePart}${boxPart} x${x.quantity} (${formatCurrency(x.unit_price_cents)}) = ${formatCurrency(
