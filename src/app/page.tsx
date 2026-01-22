@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { defaultLandingContent, type LandingContent } from "@/lib/landingContent";
 
@@ -65,7 +66,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       setSessionEmail(data.session?.user?.email ?? null);
     });
     const { data: listener } = supabase.auth.onAuthStateChange(
