@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { defaultLandingContent, type LandingContent } from "@/lib/landingContent";
 
@@ -70,7 +70,7 @@ export default function Home() {
       setSessionEmail(data.session?.user?.email ?? null);
     });
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (_event: AuthChangeEvent, session: Session | null) => {
         setSessionEmail(session?.user?.email ?? null);
       }
     );
