@@ -58,10 +58,6 @@ export async function POST(req: Request) {
     }
 
     const mappedStatus = mapStatus(event.type);
-    if (!mappedStatus) {
-      return NextResponse.json({ ok: true });
-    }
-
     const obj = event.data.object as Stripe.Checkout.Session | Stripe.PaymentIntent | Stripe.Charge;
     const orderId =
       (obj as Stripe.Checkout.Session).metadata?.order_id ||
@@ -78,9 +74,23 @@ export async function POST(req: Request) {
 
     const patch: Record<string, any> = {
       gateway_provider: "stripe",
-      status: mappedStatus,
     };
+    if (mappedStatus) patch.status = mappedStatus;
     if (gatewayOrderId) patch.gateway_order_id = gatewayOrderId;
+
+    if (event.type === "checkout.session.completed") {
+      const session = obj as Stripe.Checkout.Session;
+      const shipping = session.shipping_details;
+      const address = shipping?.address;
+      if (shipping?.name) patch.shipping_name = shipping.name;
+      if (shipping?.phone) patch.shipping_phone = shipping.phone;
+      if (address?.line1 || address?.line2) {
+        patch.shipping_address = [address.line1, address.line2].filter(Boolean).join(", ");
+      }
+      if (address?.city) patch.shipping_city = address.city;
+      if (address?.state) patch.shipping_state = address.state;
+      if (address?.postal_code) patch.shipping_zip = address.postal_code;
+    }
 
     const { error } = await supabaseAdmin.from("orders").update(patch).eq("id", orderId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

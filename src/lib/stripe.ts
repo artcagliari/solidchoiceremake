@@ -51,6 +51,12 @@ export async function createStripeCheckout(
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     payment_method_types: getPaymentMethods(),
+    shipping_address_collection: {
+      allowed_countries: ["BR"],
+    },
+    phone_number_collection: {
+      enabled: true,
+    },
     line_items: input.items.map((it) => ({
       quantity: it.quantity,
       price_data: {
