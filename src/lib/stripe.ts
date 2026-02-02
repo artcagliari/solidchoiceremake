@@ -26,13 +26,19 @@ function getStripeClient() {
   });
 }
 
-function getPaymentMethods() {
+function getPaymentMethods(): Stripe.Checkout.SessionCreateParams.PaymentMethodType[] {
   const raw = process.env.STRIPE_PAYMENT_METHODS;
   if (!raw) return ["card"];
-  return raw
+  const allowed = new Set<Stripe.Checkout.SessionCreateParams.PaymentMethodType>([
+    "card",
+    "pix",
+    "boleto",
+  ]);
+  const parsed = raw
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter((s): s is Stripe.Checkout.SessionCreateParams.PaymentMethodType => allowed.has(s as any));
+  return parsed.length > 0 ? parsed : ["card"];
 }
 
 export async function createStripeCheckout(
