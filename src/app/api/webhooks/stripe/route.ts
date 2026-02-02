@@ -80,9 +80,20 @@ export async function POST(req: Request) {
 
     if (event.type === "checkout.session.completed") {
       const session = obj as Stripe.Checkout.Session;
+      type ShippingDetails = {
+        name?: string | null;
+        phone?: string | null;
+        address?: {
+          line1?: string | null;
+          line2?: string | null;
+          city?: string | null;
+          state?: string | null;
+          postal_code?: string | null;
+        } | null;
+      };
       const shipping =
-        (session as unknown as { shipping_details?: Stripe.Checkout.Session.ShippingDetails | null })
-          .shipping_details ?? session.customer_details;
+        (session as unknown as { shipping_details?: ShippingDetails | null }).shipping_details ??
+        (session.customer_details as ShippingDetails | null);
       const address = shipping?.address;
       if (shipping?.name) patch.shipping_name = shipping.name;
       if (shipping?.phone) patch.shipping_phone = shipping.phone;
