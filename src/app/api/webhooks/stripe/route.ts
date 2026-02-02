@@ -80,7 +80,9 @@ export async function POST(req: Request) {
 
     if (event.type === "checkout.session.completed") {
       const session = obj as Stripe.Checkout.Session;
-      const shipping = session.shipping_details;
+      const shipping =
+        (session as unknown as { shipping_details?: Stripe.Checkout.Session.ShippingDetails | null })
+          .shipping_details ?? session.customer_details;
       const address = shipping?.address;
       if (shipping?.name) patch.shipping_name = shipping.name;
       if (shipping?.phone) patch.shipping_phone = shipping.phone;
