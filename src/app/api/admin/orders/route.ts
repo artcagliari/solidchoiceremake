@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { createPagarmeCheckout } from "@/lib/pagarme";
+import { createStripeCheckout } from "@/lib/stripe";
 import { requireAdmin } from "../_auth";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +87,7 @@ export async function PATCH(req: Request) {
 
       let checkout;
       try {
-        checkout = await createPagarmeCheckout({
+        checkout = await createStripeCheckout({
           orderId: order.id,
           amountCents: Number(order.total_cents ?? 0),
           items,
@@ -96,19 +96,19 @@ export async function PATCH(req: Request) {
           publicToken: order.public_token,
         });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro ao criar checkout no Pagar.me";
+        const msg = err instanceof Error ? err.message : "Erro ao criar checkout no Stripe";
         return NextResponse.json({ error: msg }, { status: 500 });
       }
 
       if (!checkout.payment_link) {
         return NextResponse.json(
-          { error: "Pagar.me não retornou link de pagamento. Verifique PAGARME_SECRET_KEY no .env.local" },
+          { error: "Stripe não retornou link de pagamento. Verifique STRIPE_SECRET_KEY no .env.local" },
           { status: 500 }
         );
       }
 
       patch.payment_link = checkout.payment_link;
-      patch.gateway_provider = "pagarme";
+      patch.gateway_provider = "stripe";
       patch.gateway_order_id = checkout.gateway_order_id;
     }
 
