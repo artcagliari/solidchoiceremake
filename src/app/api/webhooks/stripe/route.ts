@@ -11,7 +11,7 @@ function getStripeClient() {
   if (!STRIPE_SECRET_KEY) {
     throw new Error("STRIPE_SECRET_KEY não configurada");
   }
-  return new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" });
+  return new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-01-28.clover" });
 }
 
 function mapStatus(eventType: string) {

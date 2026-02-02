@@ -22,7 +22,7 @@ function getStripeClient() {
     throw new Error("STRIPE_SECRET_KEY não configurada");
   }
   return new Stripe(STRIPE_SECRET_KEY, {
-    apiVersion: "2023-10-16",
+    apiVersion: "2026-01-28.clover",
   });
 }
 
