@@ -93,6 +93,12 @@ export default function MinhaContaPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
+              href="/minha-conta/endereco"
+              className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+            >
+              Meu endereço
+            </Link>
+            <Link
               href="/loja"
               className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
             >

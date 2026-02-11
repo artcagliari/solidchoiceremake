@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 
 type OrderItem = {
   id: string;
@@ -51,6 +52,7 @@ export default function PedidoPublicoPage({ params }: { params: { token: string 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const [accountToken, setAccountToken] = useState<string | null>(null);
 
   const [shipping, setShipping] = useState({
     shipping_name: "",
@@ -94,12 +96,76 @@ export default function PedidoPublicoPage({ params }: { params: { token: string 
     load();
   }, [token]);
 
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      const t = data.session?.access_token ?? null;
+      setAccountToken(t);
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    const loadAccountAddress = async () => {
+      if (!accountToken) return;
+      try {
+        const res = await fetch("/api/account/address", {
+          headers: { Authorization: `Bearer ${accountToken}` },
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          item?: {
+            name?: string | null;
+            phone?: string | null;
+            address?: string | null;
+            city?: string | null;
+            state?: string | null;
+            zip?: string | null;
+            notes?: string | null;
+          } | null;
+        };
+        const item = json.item;
+        if (!item) return;
+        setShipping((prev) => ({
+          shipping_name: prev.shipping_name || item.name || "",
+          shipping_phone: prev.shipping_phone || item.phone || "",
+          shipping_address: prev.shipping_address || item.address || "",
+          shipping_city: prev.shipping_city || item.city || "",
+          shipping_state: prev.shipping_state || item.state || "",
+          shipping_zip: prev.shipping_zip || item.zip || "",
+          shipping_notes: prev.shipping_notes || item.notes || "",
+        }));
+      } catch {
+        // ignora falha de endereço da conta
+      }
+    };
+    loadAccountAddress();
+  }, [accountToken]);
+
   const saveShipping = async () => {
     if (!token) return;
     setSaving(true);
     setNotice(null);
     setError(null);
     try {
+      if (accountToken) {
+        await fetch("/api/account/address", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accountToken}`,
+          },
+          body: JSON.stringify({
+            name: shipping.shipping_name,
+            phone: shipping.shipping_phone,
+            address: shipping.shipping_address,
+            city: shipping.shipping_city,
+            state: shipping.shipping_state,
+            zip: shipping.shipping_zip,
+            notes: shipping.shipping_notes,
+          }),
+        });
+      }
       const res = await fetch(`/api/orders/public/${token}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

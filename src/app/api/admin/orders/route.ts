@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
-import { createStripeCheckout } from "@/lib/stripe";
+import { createStripePaymentIntent } from "@/lib/stripe";
 import { requireAdmin } from "../_auth";
 
 export const dynamic = "force-dynamic";
@@ -67,17 +67,11 @@ export async function PATCH(req: Request) {
       const { data: order, error: orderErr } = await supabaseAdmin
         .from("orders")
         .select(
-          "id,total_cents,email,public_token,order_items(quantity,product:products(name,price_cents))"
+          "id,total_cents,email,public_token,gateway_order_id,order_items(quantity,product:products(name,price_cents))"
         )
         .eq("id", id)
         .single();
       if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
-
-      const items = (order?.order_items ?? []).map((it: any) => ({
-        name: it.product?.name ?? "Produto",
-        quantity: Number(it.quantity ?? 1),
-        unit_price_cents: Number(it.product?.price_cents ?? 0),
-      }));
 
       const origin =
         req.headers.get("origin") ||
@@ -85,31 +79,27 @@ export async function PATCH(req: Request) {
         process.env.NEXT_PUBLIC_APP_URL ||
         "";
 
-      let checkout;
-      try {
-        checkout = await createStripeCheckout({
-          orderId: order.id,
-          amountCents: Number(order.total_cents ?? 0),
-          items,
-          customer: { name: "Cliente Solid Choice", email: order.email },
-          origin,
-          publicToken: order.public_token,
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro ao criar checkout no Stripe";
-        return NextResponse.json({ error: msg }, { status: 500 });
+      const publicToken = order.public_token;
+      if (!publicToken) {
+        return NextResponse.json({ error: "Pedido sem token público." }, { status: 500 });
       }
 
-      if (!checkout.payment_link) {
-        return NextResponse.json(
-          { error: "Stripe não retornou link de pagamento. Verifique STRIPE_SECRET_KEY no .env.local" },
-          { status: 500 }
-        );
+      if (!order.gateway_order_id) {
+        try {
+          const intent = await createStripePaymentIntent({
+            orderId: order.id,
+            amountCents: Number(order.total_cents ?? 0),
+            customerEmail: order.email,
+          });
+          patch.gateway_order_id = intent.payment_intent_id;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Erro ao criar pagamento no Stripe";
+          return NextResponse.json({ error: msg }, { status: 500 });
+        }
       }
 
-      patch.payment_link = checkout.payment_link;
+      patch.payment_link = `${origin}/pagamento/${publicToken}`;
       patch.gateway_provider = "stripe";
-      patch.gateway_order_id = checkout.gateway_order_id;
     }
 
     const { error } = await supabaseAdmin.from("orders").update(patch).eq("id", id);

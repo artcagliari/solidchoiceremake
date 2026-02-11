@@ -929,6 +929,12 @@ export default function AdminPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
+              href="/admin/pedidos"
+              className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
+            >
+              Pedidos
+            </Link>
+            <Link
               href="/loja"
               className="cta-secondary rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em]"
             >

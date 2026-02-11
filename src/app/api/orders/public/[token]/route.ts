@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
         "id,status,total_cents,created_at,payment_link,public_token,shipping_name,shipping_phone,shipping_address,shipping_city,shipping_state,shipping_zip,shipping_notes,order_items(id,quantity,product:products(id,name,hero_image,price_cents))"
       )
       .eq("public_token", token)
-      .single();
+      .maybeSingle();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (!data) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });

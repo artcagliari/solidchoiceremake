@@ -15,6 +15,18 @@ type CreateCheckoutResult = {
   raw: unknown;
 };
 
+type CreatePaymentIntentInput = {
+  orderId: string;
+  amountCents: number;
+  customerEmail?: string | null;
+};
+
+type CreatePaymentIntentResult = {
+  payment_intent_id: string;
+  client_secret: string | null;
+  raw: unknown;
+};
+
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
 function getStripeClient() {
@@ -39,6 +51,45 @@ function getPaymentMethods(): Stripe.Checkout.SessionCreateParams.PaymentMethodT
     .map((s) => s.trim())
     .filter((s): s is Stripe.Checkout.SessionCreateParams.PaymentMethodType => allowed.has(s as any));
   return parsed.length > 0 ? parsed : ["card"];
+}
+
+function getPaymentIntentMethods(): Stripe.PaymentIntentCreateParams.PaymentMethodType[] {
+  const raw = process.env.STRIPE_PAYMENT_METHODS;
+  if (!raw) return ["card"];
+  const allowed = new Set<Stripe.PaymentIntentCreateParams.PaymentMethodType>([
+    "card",
+    "pix",
+    "boleto",
+  ]);
+  const parsed = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s): s is Stripe.PaymentIntentCreateParams.PaymentMethodType => allowed.has(s as any));
+  return parsed.length > 0 ? parsed : ["card"];
+}
+
+export async function createStripePaymentIntent(
+  input: CreatePaymentIntentInput
+): Promise<CreatePaymentIntentResult> {
+  const stripe = getStripeClient();
+  const intent = await stripe.paymentIntents.create({
+    amount: input.amountCents,
+    currency: "brl",
+    payment_method_types: getPaymentIntentMethods(),
+    receipt_email: input.customerEmail ?? undefined,
+    metadata: { order_id: input.orderId },
+  });
+
+  return {
+    payment_intent_id: intent.id,
+    client_secret: intent.client_secret ?? null,
+    raw: intent,
+  };
+}
+
+export async function retrieveStripePaymentIntent(paymentIntentId: string) {
+  const stripe = getStripeClient();
+  return stripe.paymentIntents.retrieve(paymentIntentId);
 }
 
 export async function createStripeCheckout(
