@@ -53,10 +53,10 @@ function getPaymentMethods(): Stripe.Checkout.SessionCreateParams.PaymentMethodT
   return parsed.length > 0 ? parsed : ["card"];
 }
 
-function getPaymentIntentMethods(): Stripe.PaymentIntentCreateParams.PaymentMethodType[] {
+function getPaymentIntentMethods(): Stripe.PaymentIntentCreateParams["payment_method_types"] {
   const raw = process.env.STRIPE_PAYMENT_METHODS;
   if (!raw) return ["card"];
-  const allowed = new Set<Stripe.PaymentIntentCreateParams.PaymentMethodType>([
+  const allowed = new Set<Stripe.PaymentIntentCreateParams["payment_method_types"][number]>([
     "card",
     "pix",
     "boleto",
@@ -64,7 +64,10 @@ function getPaymentIntentMethods(): Stripe.PaymentIntentCreateParams.PaymentMeth
   const parsed = raw
     .split(",")
     .map((s) => s.trim())
-    .filter((s): s is Stripe.PaymentIntentCreateParams.PaymentMethodType => allowed.has(s as any));
+    .filter(
+      (s): s is Stripe.PaymentIntentCreateParams["payment_method_types"][number] =>
+        allowed.has(s as any)
+    );
   return parsed.length > 0 ? parsed : ["card"];
 }
 
