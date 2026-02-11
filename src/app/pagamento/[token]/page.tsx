@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
+import type { StripeElementsOptions } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -38,7 +39,7 @@ function statusLabel(status: string | null) {
   return "PENDENTE";
 }
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY || "");
 
 function PaymentForm({
   token,
@@ -341,18 +342,15 @@ export default function PagamentoPage({ params }: { params: { token: string } })
     loadAccount();
   }, []);
 
-  const options = useMemo(
-    () =>
-      clientSecret
-        ? {
-            clientSecret,
-            appearance: {
-              theme: "night",
-            },
-          }
-        : undefined,
-    [clientSecret]
-  );
+  const options = useMemo<StripeElementsOptions | undefined>(() => {
+    if (!clientSecret) return undefined;
+    return {
+      clientSecret,
+      appearance: {
+        theme: "night",
+      },
+    };
+  }, [clientSecret]);
 
   return (
     <div className="min-h-screen bg-[#0c1428] text-[#f2d3a8]">
